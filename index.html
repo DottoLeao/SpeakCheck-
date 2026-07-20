@@ -553,17 +553,20 @@ function resetApp(){
 function toggleRec(){
   if(!SR){ document.getElementById('notice').classList.add('show'); return; }
   if(recognizing){ userStopped=true; if(rec) rec.stop(); return; }
-  rec=makeRec(true);
+  // continuous=true triggers a well-known Android Chrome bug where each new "final" result
+  // restates the ENTIRE utterance so far instead of just the new segment, so summing all
+  // finals compounds into runaway repeated text. Using continuous=false (short, predictable
+  // single-utterance sessions) and manually chaining restarts avoids that failure mode.
+  rec=makeRec(false);
   const mic=document.getElementById('mic'), bars=document.getElementById('bars');
   userStopped=false; hadError=false; restartCount=0; committed=''; sessionFinal=''; prevWordCount=0;
   rec.onstart=()=>{ recognizing=true; mic.classList.add('rec');
     mic.setAttribute('aria-label','Stop recording'); mic.setAttribute('aria-pressed','true');
     bars.classList.add('on'); setLabel('Listening… tap the mic again to stop', true); };
   rec.onresult=(e)=>{
-    let fin='', interim='';
-    for(let i=0;i<e.results.length;i++){ const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) fin+=t+' '; else interim+=t; }
-    sessionFinal=fin;                                    // rebuilt from index 0 → idempotent (kills Android duplicate finals)
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){ const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) sessionFinal+=t+' '; else interim+=t; }
     liveTranscript((committed+sessionFinal+' '+interim).trim());
   };
   rec.onerror=(e)=>{
@@ -571,8 +574,9 @@ function toggleRec(){
     showError(e.error);
   };
   rec.onend=()=>{
-    // Android Chrome ends the session after a silence gap even with continuous=true — restart unless the user stopped
-    if(!userStopped && !hadError && restartCount<5){
+    // continuous=false ends after every natural pause — restart to chain sessions into one
+    // continuous-feeling recording until the user taps stop. Cap is just a runaway-loop guard.
+    if(!userStopped && !hadError && restartCount<100){
       committed += sessionFinal; sessionFinal=''; restartCount++;
       try{ rec.start(); return; }catch(_){ /* fall through and finalize */ }
     }
