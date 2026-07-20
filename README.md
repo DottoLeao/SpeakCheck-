@@ -1,113 +1,89 @@
 <div align="center">
 
-# 🌊 SoundCheck
+# SpeakCheck — Pronunciation Lab
 
-### Hear how your English really sounds.
+**A browser-based pronunciation coach for English learners.**
 
-A tiny web app that lets you **speak English out loud**, spots the words that trip learners up, and helps you **fix them one by one** — until they all turn green. ✅
-
-Built for language classrooms. Works on any phone. No install, no sign-up, no cost.
+Speak freely, get the tricky words flagged in real time, and practise each one until your whole sentence turns green — all running 100% on-device, with zero dependencies and zero backend.
 
 <br>
 
-`Speech Recognition` · `Text-to-Speech` · `Pure HTML/CSS/JS` · `Mobile-first`
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_it_now-66BC29?style=for-the-badge&logo=googlechrome&logoColor=white)](https://dottoleao.github.io/SpeakCheck-/)
+
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-3B53A4?style=for-the-badge&logo=css3&logoColor=white)
+![Web Speech API](https://img.shields.io/badge/Web_Speech_API-Speech_to_Text-3B53A4?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)
 
 <br>
 
-**[▶️ Try it live](#-live-demo)** · **[✨ Features](#-features)** · **[🚀 Deploy your own](#-deploy-in-2-minutes)**
+<img src="img" alt="SpeakCheck demo" width="420">
 
 </div>
 
 ---
 
-## 🎯 What it does
+## Overview
 
-You tap the mic and just talk. SoundCheck listens, writes down what it heard, and highlights the words that most often reveal an accent — the *th* sounds, *R* vs *L*, *V* vs *W*, silent letters, tricky vowels, and more.
+SpeakCheck listens to you speak English, transcribes it live, and highlights the words that most commonly reveal a foreign accent — *th* sounds, R/L and V/W confusion, silent letters, vowel length, word stress. Each flagged word becomes an interactive card: **hear** the native pronunciation, then **say it back** until the app confirms you nailed it.
 
-For every flagged word you get a little card with two buttons:
+The interface is themed after [Pacific English Study](https://pacificenglishschool.com/), a real language school on the Gold Coast, Australia — built as a white-label branding exercise using the school's official colours and identity.
 
-| 🔊 **Hear it** | 🎤 **Say it** |
-|:--|:--|
-| Plays the correct pronunciation, nice and slow. | Records you repeating the word and checks it. |
+**[→ Open the live demo](https://dottoleao.github.io/SpeakCheck-/)** *(Chrome on Android/desktop or Safari on iOS, microphone required)*
 
-Nail it, and the card turns **green**. Turn them all green and you get a little wave of applause. 🌊
+## Key features
 
----
+- **Free speech input** — no scripts to read; say anything and get instant feedback
+- **Smart flagging** — a curated dictionary of 45+ high-frequency pronunciation traps, language-agnostic
+- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording with automatic verification
+- **Live transcription** — words render on screen while you're still speaking (interim results)
+- **Teacher-style corrections** — flagged words get a red wavy underline that turns green when fixed
+- **Fully private** — audio never leaves the device; no server, no tracking, no accounts
 
-## ✨ Features
+## How it works
 
-- 🗣️ **Speak freely** — no scripts to read, say anything in English.
-- 🎯 **Smart flagging** — highlights the sounds learners most commonly slip on, whatever your first language.
-- 🔊 **Listen to the correct version** — powered by your device's built-in voice, so it works offline.
-- ✅ **Fix-and-check loop** — re-record each word until it's right; watch it go green.
-- 📱 **Made for phones** — big tap targets, one screen, no clutter.
-- 🌍 **Universal** — not tied to any single nationality or native language.
-- 🆓 **100% free & private** — everything runs in your browser. Nothing is uploaded anywhere.
+```
+Microphone → SpeechRecognition (interim + final results)
+           → text normalisation → dictionary matching
+           → correction cards → SpeechSynthesis playback
+           → per-word re-recognition → fuzzy match → pass/fail
+```
 
----
+| Layer | Choice | Why |
+|---|---|---|
+| Speech-to-text | **Web Speech API** (`SpeechRecognition`) | On-device/browser-native STT, no API costs, works offline-ish |
+| Text-to-speech | **SpeechSynthesis API** | Native voices, rate control for slow playback |
+| UI | **Vanilla HTML/CSS/JS** | Single file, no build step, instant load on any phone |
+| Icons | **Lucide** | Consistent icon system, re-hydrated after dynamic DOM injection |
+| Verification | Fuzzy text matching | Tolerates recognition variance while catching real mispronunciations |
 
-## 🖥️ Live demo
+The core insight: when an accent distorts a word enough, the speech engine *mishears it* (e.g. *think* → *sink*). SpeakCheck exploits that as a free pronunciation signal — no acoustic analysis needed.
 
-> After you deploy (see below), drop your link here:
+## Running locally
 
-**🔗 https://YOUR-USERNAME.github.io/soundcheck/**
+It's a single `index.html`. Clone and open it — that's it.
 
----
+```bash
+git clone https://github.com/DottoLeao/SpeakCheck-.git
+```
 
-## 🚀 Deploy in 2 minutes
+> Speech recognition requires Chrome (desktop/Android) or Safari (iOS) and microphone permission.
 
-SoundCheck is a single `index.html` file, so hosting is effortless. Pick whichever is easier for you.
+## Roadmap
 
-### Option A — GitHub Pages (free forever)
+- [ ] Per-session score and streak tracking
+- [ ] Custom word lists per class level (A1–C1)
+- [ ] Sentence-level stress and rhythm feedback
 
-1. Create a new repository on GitHub called **`soundcheck`**.
-2. Upload `index.html` and `README.md` (drag & drop works).
-3. Go to **Settings → Pages**.
-4. Under **Branch**, pick `main` and the `/root` folder, then **Save**.
-5. Wait ~1 minute — your app is live at `https://YOUR-USERNAME.github.io/soundcheck/` 🎉
+## Author
 
-### Option B — Netlify Drop (even faster)
+**Lorenzo Leão Dotto** — Full Stack Developer & Data Scientist
 
-1. Go to **[app.netlify.com/drop](https://app.netlify.com/drop)**.
-2. Drag the `index.html` file onto the page.
-3. You get a live link instantly. Done.
+[![Portfolio](https://img.shields.io/badge/Portfolio-lorenzodotto.com.br-3B53A4?style=flat-square&logo=googlechrome&logoColor=white)](https://lorenzodotto.com.br)
+[![GitHub](https://img.shields.io/badge/GitHub-DottoLeao-181717?style=flat-square&logo=github)](https://github.com/DottoLeao)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Lorenzo_Dotto-0A66C2?style=flat-square&logo=linkedin)](https://linkedin.com/in/lorenzo-leão-dotto)
 
----
+## License
 
-## 📱 How students use it
-
-1. Open the link in **Chrome** (Android) or **Safari** (iPhone).
-2. Tap **Allow** when the browser asks for the microphone.
-3. Speak, then polish the highlighted words until they're all green.
-
-> 💡 Works best in a quiet spot. The speech engine needs to hear you clearly.
-
----
-
-## 🛠️ Built with
-
-- **Web Speech API** (`SpeechRecognition`) — turns speech into text, right in the browser.
-- **Speech Synthesis API** — plays back the correct pronunciation.
-- **Vanilla HTML / CSS / JavaScript** — no frameworks, no build step, one file.
-- **Google Fonts** — Poppins, Inter & Space Mono.
-
-No servers. No databases. No tracking. Everything happens on the device.
-
----
-
-## ⚠️ Good to know
-
-SoundCheck compares the **text** the browser recognises, not the raw sound wave, so it isn't a professional acoustic analyser. It shines when an accent changes a word enough to be misheard (e.g. *think* → *sink*). Think of it as a friendly practice buddy, not an exam. 🙂
-
----
-
-## 📄 License
-
-Released under the [MIT License](LICENSE) — free to use, share, and remix.
-
-<div align="center">
-<br>
-
-Made with 💙 for English learners everywhere.
-
-</div>
+Released under the [MIT License](LICENSE).
