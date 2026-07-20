@@ -34,11 +34,14 @@ The interface is themed after [Pacific English Study](https://pacificenglishscho
 
 ## Key features
 
-- **Free speech input** — no scripts to read; say anything and get instant feedback
+- **Free, continuous speech input** — no scripts to read; speak as long as you like and tap the mic to stop
 - **Smart flagging** — a curated dictionary of 45+ high-frequency pronunciation traps, language-agnostic
-- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording with automatic verification
+- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording with verification that guards minimal pairs (*three*/*tree*, *ship*/*sheep*) instead of accepting loose partial matches
 - **Live transcription** — words render on screen while you're still speaking (interim results)
-- **Teacher-style corrections** — flagged words get a red wavy underline that turns green when fixed
+- **Teacher-style corrections** — flagged words get a red wavy underline (plus a ⚠/✓ marker) that turns green when fixed
+- **Light & dark mode** — follows the system colour scheme automatically
+- **Accessible** — live status regions for screen readers, descriptive mic/button labels, and non-colour cues for flagged vs. corrected words
+- **Clear error feedback** — distinct messages for denied permission, no speech, no microphone, or no connection
 - **Fully private** — audio never leaves the device; no server, no tracking, no accounts
 
 ## How it works
@@ -55,8 +58,9 @@ Microphone → SpeechRecognition (interim + final results)
 | Speech-to-text | **Web Speech API** (`SpeechRecognition`) | On-device/browser-native STT, no API costs, works offline-ish |
 | Text-to-speech | **SpeechSynthesis API** | Native voices, rate control for slow playback |
 | UI | **Vanilla HTML/CSS/JS** | Single file, no build step, instant load on any phone |
-| Icons | **Lucide** | Consistent icon system, re-hydrated after dynamic DOM injection |
-| Verification | Fuzzy text matching | Tolerates recognition variance while catching real mispronunciations |
+| Icons | **Lucide** (pinned) | Consistent icon system, re-hydrated after dynamic DOM injection |
+| Animation | **Motion** (motion.dev, pinned) | Compositor-accelerated micro-interactions; auto-disabled under `prefers-reduced-motion` |
+| Verification | Token + bounded Levenshtein matching | Accepts recognition variance but rejects confusable minimal pairs |
 
 The core insight: when an accent distorts a word enough, the speech engine *mishears it* (e.g. *think* → *sink*). SpeakCheck exploits that as a free pronunciation signal — no acoustic analysis needed.
 

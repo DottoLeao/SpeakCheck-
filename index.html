@@ -4,19 +4,40 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pronunciation Lab — Pacific English Study</title>
-<meta name="theme-color" content="#3B53A4" />
+<meta name="theme-color" content="#3B53A4" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#111830" media="(prefers-color-scheme: dark)" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@1.25.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/motion@12.42.2/dist/motion.js" defer></script>
 <style>
   :root{
+    color-scheme:light dark;
     --navy:#3B53A4; --navy-deep:#2C3F82; --navy-tint:#EDF1FA;
     --green:#66BC29; --green-deep:#4E9E1E; --green-tint:#EFF8E6;
     --ink:#182448; --muted:#5F6B87; --line:#E3E9F4;
     --paper:#FFFFFF; --mist:#F6F8FC;
     --err:#C9403A; --err-tint:#FBEFEE;
+    --strip-fg:#C6D2F0; --tag-border:#D5DEF4;
+    --hear-hover:#DFE7F8; --done-border:#D9EDC6;
+    --mic-bg:#3B53A4; --mic-hover:#2C3F82; --allgreen-bg:#3B53A4;
+    --card-shadow:0 1px 2px rgba(24,36,72,.04), 0 12px 32px -24px rgba(24,36,72,.18);
     --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --navy:#8FA3E8; --navy-deep:#232C4E; --navy-tint:#242F52;
+      --green:#66BC29; --green-deep:#9AD86E; --green-tint:#1E2E15;
+      --ink:#E9EDF8; --muted:#A3AECB; --line:#2C3654;
+      --paper:#1A2138; --mist:#111830;
+      --err:#E8746E; --err-tint:#3A2120;
+      --strip-fg:#A9B6DC; --tag-border:#38466F;
+      --hear-hover:#2C3A63; --done-border:#2F4A1C;
+      --allgreen-bg:#2C3F82;
+      --card-shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -24px rgba(0,0,0,.6);
+    }
+    .brand img{background:#fff; border-radius:8px; padding:3px}
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
@@ -31,7 +52,7 @@
 
   /* ---------- Institutional top strip ---------- */
   .topstrip{
-    background:var(--navy-deep); color:#C6D2F0;
+    background:var(--navy-deep); color:var(--strip-fg);
     font-size:12.5px; letter-spacing:.01em;
   }
   .topstrip .inner{
@@ -59,7 +80,7 @@
   .brand .name small{display:block; font-size:11px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase}
   .nav .tag{
     font-size:12px; font-weight:600; color:var(--navy);
-    background:var(--navy-tint); border:1px solid #D5DEF4;
+    background:var(--navy-tint); border:1px solid var(--tag-border);
     padding:5px 12px; border-radius:999px; white-space:nowrap;
     display:flex; align-items:center; gap:6px;
   }
@@ -87,7 +108,7 @@
   .card{
     background:var(--paper); border:1px solid var(--line);
     border-radius:var(--radius); padding:28px 24px;
-    box-shadow:0 1px 2px rgba(24,36,72,.04), 0 12px 32px -24px rgba(24,36,72,.18);
+    box-shadow:var(--card-shadow);
   }
   .card + .card{margin-top:18px}
   .card h2{
@@ -100,11 +121,11 @@
   .mic-zone{display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 0 2px}
   .mic-btn{
     position:relative; width:96px; height:96px; border-radius:50%; border:0; cursor:pointer;
-    background:var(--navy); color:#fff; display:grid; place-items:center;
+    background:var(--mic-bg); color:#fff; display:grid; place-items:center;
     box-shadow:0 10px 24px -10px rgba(44,63,130,.55);
     transition:transform .15s ease, background .2s ease;
   }
-  .mic-btn:hover{background:var(--navy-deep)}
+  .mic-btn:hover{background:var(--mic-hover)}
   .mic-btn:active{transform:scale(.96)}
   .mic-btn:focus-visible{outline:3px solid var(--green); outline-offset:3px}
   .mic-btn .lucide{width:36px;height:36px}
@@ -138,6 +159,9 @@
     text-decoration:underline solid var(--green) 2px; text-underline-offset:5px;
   }
   .transcript .ph{color:var(--muted); font-size:15px}
+  /* non-color cues: flagged/done words carry a marker as well as color + underline shape */
+  .transcript .w.flag::before{content:"\26A0"; display:inline-block; font-size:.7em; text-decoration:none; margin-right:2px; vertical-align:.05em}
+  .transcript .w.done::before{content:"\2713"; display:inline-block; font-size:.78em; text-decoration:none; margin-right:2px; vertical-align:.02em}
 
   /* ---------- Words to practise ---------- */
   .fixhead{
@@ -152,7 +176,7 @@
     background:var(--paper); border-radius:10px; padding:16px 16px 14px;
     transition:border-color .3s, background .3s;
   }
-  .fw.done{border-left-color:var(--green); background:var(--green-tint); border-color:#D9EDC6}
+  .fw.done{border-left-color:var(--green); background:var(--green-tint); border-color:var(--done-border)}
   .fw-head{display:flex; align-items:center; justify-content:space-between; gap:10px}
   .fw-word{
     font-family:"Schibsted Grotesk"; font-weight:700; font-size:21px; letter-spacing:-.01em;
@@ -165,6 +189,11 @@
   }
   .fw.done .fw-check{display:grid}
   .fw-check .lucide{width:14px;height:14px;stroke-width:3}
+  .fw-done-label{
+    display:none; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--green-deep); border:1px solid var(--done-border); border-radius:999px; padding:2px 9px;
+  }
+  .fw.done .fw-done-label{display:inline-block}
   .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px}
   .fw.done .fw-tip{color:var(--green-deep)}
   .fw-actions{display:flex; gap:9px; margin-top:14px}
@@ -175,7 +204,7 @@
   }
   .act:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
   .act.hear{background:var(--navy-tint); color:var(--navy)}
-  .act.hear:hover{background:#DFE7F8}
+  .act.hear:hover{background:var(--hear-hover)}
   .act.say{background:var(--green); color:#fff}
   .act.say:hover{filter:brightness(.95)}
   .act.say.rec{background:var(--err)}
@@ -189,7 +218,7 @@
     font-weight:600; font-size:14.5px;
   }
   .clean{background:var(--green-tint); color:var(--green-deep); margin-top:18px}
-  .allgreen{background:var(--navy); color:#fff; margin-top:14px}
+  .allgreen{background:var(--allgreen-bg); color:#fff; margin-top:14px}
   .allgreen .lucide{color:var(--green)}
 
   .btn-row{margin-top:18px}
@@ -226,6 +255,10 @@
     .mic-btn.rec .ring, .bars.on span{animation:none}
   }
   .hide{display:none !important}
+  .sr-only{
+    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
 </style>
 </head>
 <body>
@@ -262,12 +295,12 @@
 <main class="wrap">
   <section class="card">
     <div class="mic-zone">
-      <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Start recording">
+      <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Start recording" aria-pressed="false">
         <span class="ring"></span>
         <i data-lucide="mic"></i>
       </button>
       <div class="bars" id="bars"><span></span><span></span><span></span><span></span><span></span></div>
-      <div class="mic-label" id="label">Tap the microphone and speak in English</div>
+      <div class="mic-label" id="label" role="status" aria-live="polite">Tap the microphone and speak in English</div>
     </div>
     <p class="hint">Try saying: <b>"I think this is a really nice place to study."</b></p>
   </section>
@@ -277,13 +310,15 @@
     <div class="transcript" id="transcript"></div>
     <div id="fixWrap"></div>
     <div class="btn-row">
-      <button class="btn" onclick="location.reload()"><i data-lucide="rotate-ccw"></i>Record again</button>
+      <button class="btn" onclick="resetApp()"><i data-lucide="rotate-ccw"></i>Record again</button>
     </div>
   </section>
 
-  <div class="notice" id="notice">
+  <div class="notice" id="notice" role="alert">
     <b>This browser can't hear you.</b> Open this page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone), and allow microphone access when asked.
   </div>
+
+  <div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
 </main>
 
 <footer>
@@ -321,91 +356,346 @@ const TRICKY = {
   "honest":"silent 'h'.","hour":"silent 'h'.","could":"silent 'l'.","would":"silent 'l'.",
   "focus":"stress the first beat: FO-cus.","develop":"stress the middle: de-VEL-op.",
   "people":"/ˈpiːpəl/ — long 'ee' then a soft 'l'.","beautiful":"3 beats: /ˈbjuːtɪfəl/.",
-  "clothes":"often just /kloʊz/.","favourite":"often 2 beats: /ˈfeɪvrɪt/."
+  "clothes":"often just /kloʊz/.","favourite":"often 2 beats: /ˈfeɪvrɪt/.",
+
+  /* th sounds */
+  "with":"voiced 'th' (/ð/) — don't drop it to 'wit'.",
+  "nothing":"'th' + '-ng': /ˈnʌθɪŋ/.",
+  "mother":"voiced 'th' (/ð/) in the middle.",
+  "father":"voiced 'th' (/ð/) in the middle.",
+  "together":"voiced 'th' (/ð/); stress the middle: to-GE-ther.",
+  "birthday":"unvoiced 'th' (/θ/), not 'd' or 't'.",
+  "month":"unvoiced 'th' (/θ/) — same family as 'months'.",
+  "truth":"unvoiced 'th' (/θ/) at the end.",
+
+  /* r/l confusion */
+  "children":"/l/ and /r/ close together — go slowly.",
+  "already":"clear /r/, then /l/.",
+  "travel":"/r/ then /l/ at the end.",
+  "library":"/r/ three times: /ˈlaɪbrəri/.",
+  "yellow":"/l/ — tongue tip up, not 'y' or 'j'.",
+
+  /* v/w confusion */
+  "wonderful":"/w/ start, not /v/.",
+  "work":"/w/ start.",
+  "want":"/w/ start.",
+  "winter":"/w/ start.",
+  "one":"starts with /w/: /wʌn/, not 'o-ne'.",
+  "seven":"/v/ in the middle, not /b/.",
+  "never":"/v/ in the middle.",
+  "even":"/v/ in the middle.",
+  "above":"/v/ in the middle.",
+  "love":"/v/ — top teeth on the bottom lip.",
+
+  /* vowel-length minimal pairs */
+  "sit":"short /ɪ/ (different from 'seat').",
+  "seat":"long /iː/ — hold it.",
+  "bit":"short /ɪ/ (different from 'beat').",
+  "beat":"long /iː/.",
+  "full":"short /ʊ/ (different from 'fool').",
+  "fool":"long /uː/.",
+
+  /* -ed endings */
+  "need":"'-ed' = /ɪd/: 'need-id'.",
+  "decide":"'-ed' = /ɪd/: 'decide-id'.",
+  "start":"'-ed' = /ɪd/: 'start-id'.",
+  "visit":"'-ed' = /ɪd/: 'visit-id'.",
+  "play":"'-ed' = /d/: 'playd'.",
+  "open":"'-ed' = /d/: 'opend'.",
+  "watch":"'-ed' = /t/: 'watcht'.",
+  "help":"'-ed' = /t/: 'helpt'.",
+
+  /* silent letters */
+  "write":"silent 'w'.",
+  "climb":"silent 'b'.",
+  "comb":"silent 'b'.",
+  "half":"silent 'l'.",
+  "talk":"silent 'l'.",
+  "should":"silent 'l'.",
+  "sign":"silent 'g'.",
+
+  /* word stress */
+  "interesting":"stress the first beat: IN-tres-ting.",
+  "important":"stress the middle: im-POR-tant.",
+  "different":"stress the first beat: DIF-fer-ent.",
+  "family":"stress the first beat: FAM-i-ly.",
+  "restaurant":"3 beats: /ˈrɛstrɒnt/.",
+  "government":"often 3 beats: /ˈɡʌvəmənt/.",
+
+  /* schwa reductions */
+  "about":"unstressed first beat — a quick schwa, not full 'ow'.",
+  "today":"schwa, schwa, STRESS: tuh-duh-DAY.",
+  "police":"schwa first beat: puh-LEECE.",
+  "banana":"schwa-STRESS-schwa: buh-NAN-uh.",
+
+  /* consonant clusters */
+  "fifth":"/fɪfθ/ — three sounds in a row.",
+  "sixth":"/sɪksθ/ — cluster at the end.",
+  "strength":"/streŋkθ/ — heavy cluster.",
+  "breakfast":"/brekfəst/ — cluster at the start."
 };
 
 let recognizing=false, rec=null, wordRec=null, activeCard=null;
+let userStopped=false, hadError=false, restartCount=0, enVoice=null;
+let committed='', sessionFinal='', prevWordCount=0;
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if(!SR){ document.getElementById('notice').classList.add('show'); }
-function makeRec(){ const r=new SR(); r.lang='en-US'; r.interimResults=true; r.maxAlternatives=1; r.continuous=false; return r; }
+function makeRec(cont){ const r=new SR(); r.lang='en-US'; r.interimResults=true; r.maxAlternatives=1; r.continuous=!!cont; return r; }
 const norm = s => s.toLowerCase().replace(/[^a-z\s']/g,'').replace(/\s+/g,' ').trim();
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 
-/* ----- main recording ----- */
+/* ----- match inflected forms (plural/tense) against the dictionary's base words ----- */
+function lookupTricky(word){
+  if(!word) return null;
+  if(TRICKY[word]) return word;                       // exact match always tried first
+
+  if(word.length>4 && /'s$/.test(word)){               // possessive: "world's" -> "world"
+    const base = word.slice(0,-2);
+    if(TRICKY[base]) return base;
+  }
+
+  const core = word.replace(/'/g,'');
+  if(core!==word && TRICKY[core]) return core;
+
+  const tryStem = s => TRICKY[s] ? s : (TRICKY[s+'e'] ? s+'e' : null);   // silent-e: decide/decided
+  const tryDegeminate = s => {                          // doubled consonant: shipping/sitting
+    if(s.length>=4 && s[s.length-1]===s[s.length-2] && !'aeiou'.includes(s[s.length-1])){
+      const d=s.slice(0,-1);
+      if(TRICKY[d]) return d;
+    }
+    return null;
+  };
+
+  if(core.length-3>=3 && core.endsWith('ing')){
+    const stem=core.slice(0,-3);
+    const hit = tryStem(stem) || tryDegeminate(stem);
+    if(hit) return hit;
+  }
+  if(core.length-1>=3 && core.endsWith('s') && !core.endsWith('ss')){
+    const stem=core.slice(0,-1);
+    if(TRICKY[stem]) return stem;                       // plain plural/3rd-person: villages -> village
+  }
+  if(core.length-2>=3 && core.endsWith('es')){
+    const stem=core.slice(0,-2);
+    const hit = tryStem(stem);
+    if(hit) return hit;                                  // sibilant plural: focuses -> focus
+  }
+  if(core.length-2>=3 && core.endsWith('ed')){
+    const stem=core.slice(0,-2);
+    const hit = tryStem(stem) || tryDegeminate(stem);
+    if(hit) return hit;
+  }
+  return null;
+}
+
+/* ----- animation helper (Motion, with graceful degradation) ----- */
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function anim(target, keyframes, opts){
+  if(REDUCED || !window.Motion || !window.Motion.animate) return {finished:Promise.resolve()};
+  try{ return window.Motion.animate(target, keyframes, opts); }
+  catch(_){ return {finished:Promise.resolve()}; }
+}
+function stagger(n){ return (window.Motion && window.Motion.stagger) ? window.Motion.stagger(n) : n; }
+
+/* ----- UI / a11y helpers ----- */
+function setLabel(msg, live){ const l=document.getElementById('label'); l.textContent=msg; l.classList.toggle('live', !!live); }
+function announce(msg){ const s=document.getElementById('srStatus'); if(s) s.textContent=msg; }
+function micIdle(){ const m=document.getElementById('mic'); m.classList.remove('rec'); m.setAttribute('aria-label','Start recording'); m.setAttribute('aria-pressed','false'); document.getElementById('bars').classList.remove('on'); }
+
+/* ----- error messages ----- */
+const ERR_MSGS = {
+  'not-allowed':'We need microphone permission — check your browser settings and try again',
+  'service-not-allowed':'We need microphone permission — check your browser settings and try again',
+  'no-speech':"We didn't hear anything. Tap the mic and speak a little louder",
+  'audio-capture':'No microphone found — check that one is connected',
+  'network':'Speech service needs internet — check your connection and try again',
+  'aborted':null
+};
+function showError(code){
+  const msg = (code in ERR_MSGS) ? ERR_MSGS[code] : 'Something went wrong — tap the mic to try again';
+  if(msg===null) return false;
+  hadError=true; setLabel(msg); announce(msg); return true;
+}
+
+/* ----- TTS voice loading (cache preferred en voice) ----- */
+function loadVoices(){
+  if(!('speechSynthesis' in window)) return;
+  const vs=speechSynthesis.getVoices();
+  enVoice = vs.find(v=>/^en(-|_)?us/i.test(v.lang) && v.localService)
+        || vs.find(v=>/^en[-_]/i.test(v.lang)) || null;
+}
+if('speechSynthesis' in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+
+/* ----- in-app reset (no page reload) ----- */
+function resetApp(){
+  userStopped=true;
+  // detach handlers first so a late onend/onerror from abort() can't overwrite the reset state
+  try{ if(rec){ rec.onend=rec.onerror=rec.onresult=null; rec.abort(); } }catch(_){}
+  try{ if(wordRec){ wordRec.onend=wordRec.onerror=wordRec.onresult=null; wordRec.abort(); } }catch(_){}
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  recognizing=false; activeCard=null; hadError=false; restartCount=0;
+  committed=''; sessionFinal=''; prevWordCount=0;
+  const card=document.getElementById('resultCard');
+  const clear=()=>{
+    document.getElementById('transcript').innerHTML='';
+    document.getElementById('fixWrap').innerHTML='';
+    card.classList.add('hide'); card.style.opacity=''; card.style.transform='';
+  };
+  micIdle();
+  setLabel('Tap the microphone and speak in English');
+  announce('Reset. Ready to record again.');
+  if(card.classList.contains('hide')){ clear(); return; }
+  anim(card,{opacity:[1,0],transform:['translateY(0)','translateY(8px)']},{duration:.25}).finished.then(clear);
+}
+
+/* ----- main recording (continuous) ----- */
 function toggleRec(){
   if(!SR){ document.getElementById('notice').classList.add('show'); return; }
-  if(recognizing){ if(rec) rec.stop(); return; }
-  rec=makeRec();
-  const mic=document.getElementById('mic'), bars=document.getElementById('bars'), label=document.getElementById('label');
-  let finalText='';
-  rec.onstart=()=>{ recognizing=true; mic.classList.add('rec'); bars.classList.add('on');
-    label.textContent='Listening… go ahead'; label.classList.add('live'); };
-  rec.onresult=(e)=>{ let interim='';
-    for(let i=e.resultIndex;i<e.results.length;i++){ const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) finalText+=t+' '; else interim+=t; }
-    liveTranscript(finalText+' '+interim); };
-  rec.onerror=(e)=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed') label.textContent='We need microphone permission to hear you'; };
-  rec.onend=()=>{ recognizing=false; mic.classList.remove('rec'); bars.classList.remove('on'); label.classList.remove('live');
-    label.textContent='Tap the microphone and speak in English'; buildResult(norm(finalText)); };
+  if(recognizing){ userStopped=true; if(rec) rec.stop(); return; }
+  rec=makeRec(true);
+  const mic=document.getElementById('mic'), bars=document.getElementById('bars');
+  userStopped=false; hadError=false; restartCount=0; committed=''; sessionFinal=''; prevWordCount=0;
+  rec.onstart=()=>{ recognizing=true; mic.classList.add('rec');
+    mic.setAttribute('aria-label','Stop recording'); mic.setAttribute('aria-pressed','true');
+    bars.classList.add('on'); setLabel('Listening… tap the mic again to stop', true); };
+  rec.onresult=(e)=>{
+    let fin='', interim='';
+    for(let i=0;i<e.results.length;i++){ const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) fin+=t+' '; else interim+=t; }
+    sessionFinal=fin;                                    // rebuilt from index 0 → idempotent (kills Android duplicate finals)
+    liveTranscript((committed+sessionFinal+' '+interim).trim());
+  };
+  rec.onerror=(e)=>{
+    if(e.error==='no-speech' && (committed+sessionFinal).trim()) return; // already have text; let it keep going
+    showError(e.error);
+  };
+  rec.onend=()=>{
+    // Android Chrome ends the session after a silence gap even with continuous=true — restart unless the user stopped
+    if(!userStopped && !hadError && restartCount<5){
+      committed += sessionFinal; sessionFinal=''; restartCount++;
+      try{ rec.start(); return; }catch(_){ /* fall through and finalize */ }
+    }
+    recognizing=false; micIdle();
+    if(hadError){ hadError=false; document.getElementById('resultCard').classList.add('hide'); return; }
+    const full = norm(committed+sessionFinal);
+    if(!full){ showError('no-speech'); hadError=false; return; }
+    setLabel('Tap the microphone and speak in English');
+    buildResult(full);
+  };
   document.getElementById('resultCard').classList.add('hide');
-  rec.start();
+  try{ rec.start(); }catch(_){ recognizing=false; }
 }
 
 function liveTranscript(text){
-  document.getElementById('resultCard').classList.remove('hide');
+  const card=document.getElementById('resultCard');
+  const wasHidden=card.classList.contains('hide');
+  card.classList.remove('hide');
+  if(wasHidden){ prevWordCount=0; anim(card,{opacity:[0,1],transform:['translateY(14px)','translateY(0)']},{duration:.45,ease:[.22,1,.36,1]}); }
   const box=document.getElementById('transcript');
-  box.innerHTML = text.trim()? text.trim().split(/\s+/).map(w=>`<span class="w">${w}</span>`).join(' ')
+  const words = text.trim()? text.trim().split(/\s+/) : [];
+  box.innerHTML = words.length? words.map(w=>`<span class="w">${escapeHtml(w)}</span>`).join(' ')
     : '<span class="ph">Listening…</span>';
   document.getElementById('fixWrap').innerHTML='';
+  if(words.length>prevWordCount){
+    const fresh=Array.prototype.slice.call(box.querySelectorAll('.w'), prevWordCount);
+    if(fresh.length) anim(fresh,{opacity:[0,1]},{duration:.25});
+  }
+  prevWordCount=words.length;
 }
 
 function buildResult(heard){
   const card=document.getElementById('resultCard'); card.classList.remove('hide');
   const box=document.getElementById('transcript'), wrap=document.getElementById('fixWrap');
-  if(!heard){ box.innerHTML='<span class="ph">We didn\'t catch that. Try speaking a bit closer to the microphone.</span>'; wrap.innerHTML=''; return; }
+  if(!heard){ box.innerHTML='<span class="ph">We didn\'t catch that. Try speaking a bit closer to the microphone.</span>'; wrap.innerHTML=''; announce("We didn't catch that. Try again."); return; }
   const words=heard.split(' ').filter(Boolean); const found=[];
-  box.innerHTML=words.map((w,i)=>{ const c=w.replace(/[^a-z']/g,'');
-    if(TRICKY[c]&&!found.some(f=>f.word===c)){ found.push({word:c, id:'w'+found.length}); }
-    const idx=found.findIndex(f=>f.word===c);
-    return (TRICKY[c])?`<span class="w flag" id="t_${found[idx].id}">${w}</span>`:`<span class="w">${w}</span>`;
+  box.innerHTML=words.map((w)=>{
+    const c=w.replace(/[^a-z']/g,'');
+    const canon=lookupTricky(c);
+    if(canon && !found.some(f=>f.word===canon)){ found.push({word:canon, id:'w'+found.length}); }
+    const idx = canon ? found.findIndex(f=>f.word===canon) : -1;
+    return canon ? `<span class="w flag" id="t_${found[idx].id}">${escapeHtml(w)}</span>`
+                 : `<span class="w">${escapeHtml(w)}</span>`;
   }).join(' ');
 
   if(!found.length){
     wrap.innerHTML='<div class="clean"><i data-lucide="badge-check"></i>No classic tricky sounds spotted. Nicely done!</div>';
-    refreshIcons(); return;
+    refreshIcons();
+    anim('.clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
+    announce('Heard: '+heard+'. No tricky words found. Nicely done.');
+    return;
   }
 
   wrap.innerHTML = '<div class="fixhead"><i data-lucide="pencil-line"></i>Words to practise</div><div class="fixlist">' +
     found.map(f=>`
       <div class="fw" id="${f.id}">
         <div class="fw-head">
-          <div class="fw-word">${f.word}
-            <span class="fw-check"><i data-lucide="check"></i></span>
+          <div class="fw-word">${escapeHtml(f.word)}
+            <span class="fw-check" aria-hidden="true"><i data-lucide="check"></i></span>
+            <span class="fw-done-label">Done</span>
           </div>
         </div>
         <div class="fw-tip">${TRICKY[f.word]}</div>
         <div class="fw-actions">
-          <button class="act hear" onclick="hearWord('${f.word}')">
+          <button class="act hear" onclick="hearWord('${f.word}')" aria-label="Hear the word ${f.word}">
             <i data-lucide="volume-2"></i>Hear it
           </button>
-          <button class="act say" id="say_${f.id}" onclick="sayWord('${f.word}','${f.id}')">
+          <button class="act say" id="say_${f.id}" onclick="sayWord('${f.word}','${f.id}')" aria-label="Record yourself saying ${f.word}">
             <i data-lucide="mic"></i>Say it
           </button>
         </div>
-        <div class="fw-status" id="st_${f.id}"></div>
+        <div class="fw-status" id="st_${f.id}" role="status" aria-live="polite"></div>
       </div>`).join('') + '</div>';
   refreshIcons();
+  anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
+  announce('Heard: '+heard+'. '+found.length+(found.length===1?' word':' words')+' to practise.');
 }
 
 /* ----- hear correct pronunciation ----- */
 function hearWord(word){
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
+  try{ speechSynthesis.resume(); }catch(_){}   // iOS Safari sometimes stays paused after cancel
+  if(!enVoice) loadVoices();
   const u=new SpeechSynthesisUtterance(word);
   u.lang='en-US'; u.rate=.8;
-  const v=speechSynthesis.getVoices().find(x=>/en[-_]/i.test(x.lang));
-  if(v) u.voice=v;
+  if(enVoice) u.voice=enVoice;                 // else the en-US engine default still speaks
   speechSynthesis.speak(u);
+}
+
+/* ----- stricter word matching ----- */
+function lev(a,b){
+  const m=a.length, n=b.length;
+  if(!m) return n; if(!n) return m;
+  let prev=new Array(n+1), cur=new Array(n+1);
+  for(let j=0;j<=n;j++) prev[j]=j;
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost);
+    }
+    const t=prev; prev=cur; cur=t;
+  }
+  return prev[n];
+}
+/* minimal pairs the app exists to teach — never let a fuzzy match pass one for another */
+const CONFUSABLE = {
+  three:['tree','free'], tree:['three'], free:['three'],
+  ship:['sheep'], sheep:['ship'],
+  live:['leave'], leave:['live'],
+  thing:['sing','ting'], think:['sink','fink','tink'],
+  very:['wery','berry'], west:['vest'], water:['vater'], we:['v','vee']
+};
+function matchesTarget(word, said){
+  const tokens=said.split(' ').filter(Boolean);
+  if(tokens.includes(word)) return true;                 // exact token — word inside a phrase still passes
+  const tol = word.length>=6 ? 2 : word.length>=4 ? 1 : 0;
+  if(!tol) return false;                                 // short words: exact match only
+  return tokens.some(h=>{
+    if(CONFUSABLE[word] && CONFUSABLE[word].indexOf(h)!==-1) return false;
+    return Math.abs(h.length-word.length)<=tol && lev(h,word)<=tol;
+  });
 }
 
 /* ----- record a single word and check ----- */
@@ -413,26 +703,32 @@ function sayWord(word,id){
   if(!SR) return;
   if(activeCard){ if(wordRec) wordRec.stop(); return; }
   const btn=document.getElementById('say_'+id), st=document.getElementById('st_'+id);
-  wordRec=makeRec(); activeCard=id;
-  let got='';
+  wordRec=makeRec(false); activeCard=id;
+  let got='', wordHadError=false;
   wordRec.onstart=()=>{ btn.classList.add('rec'); st.textContent='Listening… say "'+word+'"'; st.classList.remove('bad'); };
   wordRec.onresult=(e)=>{ for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) got+=e.results[i][0].transcript+' '; } };
-  wordRec.onerror=()=>{};
+  wordRec.onerror=(e)=>{
+    if(e.error==='aborted' || e.error==='no-speech') return;   // handled by onend's normal "try again" path
+    wordHadError=true; st.textContent = ERR_MSGS[e.error] || "We couldn't hear that — try again"; st.classList.add('bad');
+  };
   wordRec.onend=()=>{
     btn.classList.remove('rec'); activeCard=null;
-    const said=norm(got); const heardWords=said.split(' ').filter(Boolean);
-    const hit = heardWords.some(h=>h===word || h.includes(word) || (word.includes(h)&&h.length>2));
+    if(wordHadError) return;
+    const said=norm(got);
+    const hit = said && matchesTarget(word, said);
     if(hit){
-      document.getElementById(id).classList.add('done');
-      st.textContent='';
+      const cardEl=document.getElementById(id);
+      cardEl.classList.add('done'); st.textContent='';
+      anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
       const tSpan=document.getElementById('t_'+id); if(tSpan){ tSpan.classList.remove('flag'); tSpan.classList.add('done'); }
+      announce(word+' pronounced correctly.');
       checkAllDone();
     } else {
       st.textContent = said? 'We heard "'+said.trim()+'" — try once more' : 'We didn\'t catch it — try again';
       st.classList.add('bad');
     }
   };
-  wordRec.start();
+  try{ wordRec.start(); }catch(_){ activeCard=null; }
 }
 
 function checkAllDone(){
@@ -441,14 +737,16 @@ function checkAllDone(){
   if(cards.length && cards.length===done.length){
     const wrap=document.getElementById('fixWrap');
     if(!document.getElementById('allgreen')){
-      const d=document.createElement('div'); d.className='allgreen'; d.id='allgreen';
+      const d=document.createElement('div'); d.className='allgreen'; d.id='allgreen'; d.setAttribute('role','status');
       d.innerHTML='<i data-lucide="award"></i>All green! Your pronunciation is on point.';
       wrap.appendChild(d);
       refreshIcons();
+      anim('#allgreen',{opacity:[0,1],transform:['scale(.85)','scale(1)']},{duration:.5,ease:'ease-out'});
+      anim('#allgreen .lucide',{rotate:[0,-12,12,0]},{duration:.6,delay:.2});
+      announce('All green! Your pronunciation is on point.');
     }
   }
 }
-if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged=()=>{}; }
 refreshIcons();
 </script>
 </body>
