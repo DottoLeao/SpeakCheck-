@@ -194,6 +194,20 @@
     color:var(--green-deep); border:1px solid var(--done-border); border-radius:999px; padding:2px 9px;
   }
   .fw.done .fw-done-label{display:inline-block}
+  .fw-type{
+    font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    border-radius:999px; padding:3px 9px; white-space:nowrap; flex:none;
+  }
+  .fw-type.pronunciation{background:var(--navy-tint); color:var(--navy); border:1px solid var(--tag-border)}
+  .fw-type.grammar{background:var(--err-tint); color:var(--err); border:1px solid var(--err-tint)}
+  .fw-type.vocabulary{background:var(--green-tint); color:var(--green-deep); border:1px solid var(--done-border)}
+  .corrected{
+    display:flex; gap:9px; align-items:flex-start;
+    margin-top:14px; padding:12px 14px; border-left:3px solid var(--green);
+    background:var(--green-tint); border-radius:8px;
+    font-size:14px; color:var(--green-deep); line-height:1.55;
+  }
+  .corrected .lucide{width:16px; height:16px; flex:none; margin-top:2px}
   .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px}
   .fw.done .fw-tip{color:var(--green-deep)}
   .fw-actions{display:flex; gap:9px; margin-top:14px}
@@ -315,7 +329,7 @@
   </section>
 
   <div class="notice" id="notice" role="alert">
-    <b>This browser can't hear you.</b> Open this page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone), and allow microphone access when asked.
+    <b>We can't access your microphone.</b> Allow microphone access for this site in your browser settings, then try again.
   </div>
 
   <div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
@@ -335,158 +349,25 @@
 </footer>
 
 <script>
-/* Words that commonly reveal accent + how to fix them (universal) */
-const TRICKY = {
-  "think":"'th' — tongue between the teeth, not 't' or 's'.",
-  "the":"voiced 'th' (/ð/) — a soft buzz, not 'de' or 'ze'.",
-  "this":"voiced 'th' (/ð/).","that":"voiced 'th' (/ð/).","these":"voiced 'th' (/ð/).","those":"voiced 'th' (/ð/).",
-  "three":"'thr' — /θr/, not 'tr' or 'fr'.","through":"'thr' + a long vowel.","thing":"'th' start, '-ng' end.",
-  "thought":"'th' + silent 'gh'.","thousand":"starts with the 'th' sound.","both":"'th' at the end.",
-  "really":"clear /r/ at the start, /l/ in the middle.","world":"/r/ then /l/ back to back — go slowly.",
-  "girl":"/r/ + /l/ — a tricky pair.","early":"/r/ + /l/.",
-  "very":"/v/ — top teeth on the bottom lip.","village":"/v/, not /w/ or /b/.","voice":"/v/ start.",
-  "we":"/w/ — round lips, no teeth.","west":"/w/ start.","water":"/w/ start.",
-  "ship":"short /ɪ/ (different from 'sheep').","sheep":"long /iː/ — hold it.",
-  "live":"short /ɪ/ (verb).","leave":"long /iː/.","beach":"long /iː/.",
-  "worked":"'-ed' = /t/: say 'workt'.","walked":"'-ed' = /t/: 'walkt'.","asked":"cluster /skt/ — one push.",
-  "months":"end cluster /nθs/.",
-  "comfortable":"often 3 beats: /ˈkʌmftəbəl/.","vegetable":"3 beats: /ˈvedʒtəbəl/.",
-  "wednesday":"silent 'd': /ˈwenzdeɪ/.","february":"often /ˈfebjuəri/.",
-  "listen":"silent 't'.","island":"silent 's'.","knight":"silent 'k'.","knife":"silent 'k'.",
-  "honest":"silent 'h'.","hour":"silent 'h'.","could":"silent 'l'.","would":"silent 'l'.",
-  "focus":"stress the first beat: FO-cus.","develop":"stress the middle: de-VEL-op.",
-  "people":"/ˈpiːpəl/ — long 'ee' then a soft 'l'.","beautiful":"3 beats: /ˈbjuːtɪfəl/.",
-  "clothes":"often just /kloʊz/.","favourite":"often 2 beats: /ˈfeɪvrɪt/.",
+/* Analysis now comes from the backend (/api/analyze): Deepgram ASR + Claude. */
 
-  /* th sounds */
-  "with":"voiced 'th' (/ð/) — don't drop it to 'wit'.",
-  "nothing":"'th' + '-ng': /ˈnʌθɪŋ/.",
-  "mother":"voiced 'th' (/ð/) in the middle.",
-  "father":"voiced 'th' (/ð/) in the middle.",
-  "together":"voiced 'th' (/ð/); stress the middle: to-GE-ther.",
-  "birthday":"unvoiced 'th' (/θ/), not 'd' or 't'.",
-  "month":"unvoiced 'th' (/θ/) — same family as 'months'.",
-  "truth":"unvoiced 'th' (/θ/) at the end.",
-
-  /* r/l confusion */
-  "children":"/l/ and /r/ close together — go slowly.",
-  "already":"clear /r/, then /l/.",
-  "travel":"/r/ then /l/ at the end.",
-  "library":"/r/ three times: /ˈlaɪbrəri/.",
-  "yellow":"/l/ — tongue tip up, not 'y' or 'j'.",
-
-  /* v/w confusion */
-  "wonderful":"/w/ start, not /v/.",
-  "work":"/w/ start.",
-  "want":"/w/ start.",
-  "winter":"/w/ start.",
-  "one":"starts with /w/: /wʌn/, not 'o-ne'.",
-  "seven":"/v/ in the middle, not /b/.",
-  "never":"/v/ in the middle.",
-  "even":"/v/ in the middle.",
-  "above":"/v/ in the middle.",
-  "love":"/v/ — top teeth on the bottom lip.",
-
-  /* vowel-length minimal pairs */
-  "sit":"short /ɪ/ (different from 'seat').",
-  "seat":"long /iː/ — hold it.",
-  "bit":"short /ɪ/ (different from 'beat').",
-  "beat":"long /iː/.",
-  "full":"short /ʊ/ (different from 'fool').",
-  "fool":"long /uː/.",
-
-  /* -ed endings */
-  "need":"'-ed' = /ɪd/: 'need-id'.",
-  "decide":"'-ed' = /ɪd/: 'decide-id'.",
-  "start":"'-ed' = /ɪd/: 'start-id'.",
-  "visit":"'-ed' = /ɪd/: 'visit-id'.",
-  "play":"'-ed' = /d/: 'playd'.",
-  "open":"'-ed' = /d/: 'opend'.",
-  "watch":"'-ed' = /t/: 'watcht'.",
-  "help":"'-ed' = /t/: 'helpt'.",
-
-  /* silent letters */
-  "write":"silent 'w'.",
-  "climb":"silent 'b'.",
-  "comb":"silent 'b'.",
-  "half":"silent 'l'.",
-  "talk":"silent 'l'.",
-  "should":"silent 'l'.",
-  "sign":"silent 'g'.",
-
-  /* word stress */
-  "interesting":"stress the first beat: IN-tres-ting.",
-  "important":"stress the middle: im-POR-tant.",
-  "different":"stress the first beat: DIF-fer-ent.",
-  "family":"stress the first beat: FAM-i-ly.",
-  "restaurant":"3 beats: /ˈrɛstrɒnt/.",
-  "government":"often 3 beats: /ˈɡʌvəmənt/.",
-
-  /* schwa reductions */
-  "about":"unstressed first beat — a quick schwa, not full 'ow'.",
-  "today":"schwa, schwa, STRESS: tuh-duh-DAY.",
-  "police":"schwa first beat: puh-LEECE.",
-  "banana":"schwa-STRESS-schwa: buh-NAN-uh.",
-
-  /* consonant clusters */
-  "fifth":"/fɪfθ/ — three sounds in a row.",
-  "sixth":"/sɪksθ/ — cluster at the end.",
-  "strength":"/streŋkθ/ — heavy cluster.",
-  "breakfast":"/brekfəst/ — cluster at the start."
-};
-
-let recognizing=false, rec=null, wordRec=null, activeCard=null;
-let userStopped=false, hadError=false, restartCount=0, enVoice=null;
-let committed='', sessionFinal='', prevWordCount=0;
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if(!SR){ document.getElementById('notice').classList.add('show'); }
-function makeRec(cont){ const r=new SR(); r.lang='en-US'; r.interimResults=true; r.maxAlternatives=1; r.continuous=!!cont; return r; }
-const norm = s => s.toLowerCase().replace(/[^a-z\s']/g,'').replace(/\s+/g,' ').trim();
+let recording=false, analyzing=false, activeCard=null, enVoice=null;
+let mediaRec=null, mediaStream=null, chunks=[], recMime='', recStartedAt=0;
+let abortCtl=null, wordTimer=null;
+const MAX_SECONDS=60, MIN_MS=700;
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 
-/* ----- match inflected forms (plural/tense) against the dictionary's base words ----- */
-function lookupTricky(word){
-  if(!word) return null;
-  if(TRICKY[word]) return word;                       // exact match always tried first
-
-  if(word.length>4 && /'s$/.test(word)){               // possessive: "world's" -> "world"
-    const base = word.slice(0,-2);
-    if(TRICKY[base]) return base;
-  }
-
-  const core = word.replace(/'/g,'');
-  if(core!==word && TRICKY[core]) return core;
-
-  const tryStem = s => TRICKY[s] ? s : (TRICKY[s+'e'] ? s+'e' : null);   // silent-e: decide/decided
-  const tryDegeminate = s => {                          // doubled consonant: shipping/sitting
-    if(s.length>=4 && s[s.length-1]===s[s.length-2] && !'aeiou'.includes(s[s.length-1])){
-      const d=s.slice(0,-1);
-      if(TRICKY[d]) return d;
-    }
-    return null;
-  };
-
-  if(core.length-3>=3 && core.endsWith('ing')){
-    const stem=core.slice(0,-3);
-    const hit = tryStem(stem) || tryDegeminate(stem);
-    if(hit) return hit;
-  }
-  if(core.length-1>=3 && core.endsWith('s') && !core.endsWith('ss')){
-    const stem=core.slice(0,-1);
-    if(TRICKY[stem]) return stem;                       // plain plural/3rd-person: villages -> village
-  }
-  if(core.length-2>=3 && core.endsWith('es')){
-    const stem=core.slice(0,-2);
-    const hit = tryStem(stem);
-    if(hit) return hit;                                  // sibilant plural: focuses -> focus
-  }
-  if(core.length-2>=3 && core.endsWith('ed')){
-    const stem=core.slice(0,-2);
-    const hit = tryStem(stem) || tryDegeminate(stem);
-    if(hit) return hit;
-  }
-  return null;
+/* ----- audio capture helpers (MediaRecorder) ----- */
+function pickMime(){
+  // webm/opus on Chrome/Firefox/Android; mp4 on Safari (iOS has no webm support)
+  const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4'];
+  for(const m of candidates){ if(window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m; }
+  return '';
+}
+function stopTracks(){ if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; } }
+async function openMic(){
+  return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}});
 }
 
 /* ----- animation helper (Motion, with graceful degradation) ----- */
@@ -505,17 +386,20 @@ function micIdle(){ const m=document.getElementById('mic'); m.classList.remove('
 
 /* ----- error messages ----- */
 const ERR_MSGS = {
-  'not-allowed':'We need microphone permission — check your browser settings and try again',
-  'service-not-allowed':'We need microphone permission — check your browser settings and try again',
+  'mic-denied':'We need microphone permission — check your browser settings and try again',
+  'no-mic':'No microphone found — check that one is connected',
   'no-speech':"We didn't hear anything. Tap the mic and speak a little louder",
-  'audio-capture':'No microphone found — check that one is connected',
-  'network':'Speech service needs internet — check your connection and try again',
+  'too-short':'That was a bit short — tap the mic and say a full sentence',
+  'too-long':'That recording is too long — keep it under a minute',
+  'network':'We need internet to analyze your speech — check your connection and try again',
+  'rate-limited':'Too many recordings in a row — wait a minute and try again',
+  'server-error':'Something went wrong on our side — try again in a moment',
   'aborted':null
 };
 function showError(code){
-  const msg = (code in ERR_MSGS) ? ERR_MSGS[code] : 'Something went wrong — tap the mic to try again';
+  const msg = (code in ERR_MSGS) ? ERR_MSGS[code] : ERR_MSGS['server-error'];
   if(msg===null) return false;
-  hadError=true; setLabel(msg); announce(msg); return true;
+  setLabel(msg); announce(msg); return true;
 }
 
 /* ----- TTS voice loading (cache preferred en voice) ----- */
@@ -529,13 +413,13 @@ if('speechSynthesis' in window){ loadVoices(); speechSynthesis.onvoiceschanged=l
 
 /* ----- in-app reset (no page reload) ----- */
 function resetApp(){
-  userStopped=true;
-  // detach handlers first so a late onend/onerror from abort() can't overwrite the reset state
-  try{ if(rec){ rec.onend=rec.onerror=rec.onresult=null; rec.abort(); } }catch(_){}
-  try{ if(wordRec){ wordRec.onend=wordRec.onerror=wordRec.onresult=null; wordRec.abort(); } }catch(_){}
+  // detach the stop handler first so a late onstop can't fire a fetch after reset
+  try{ if(mediaRec && mediaRec.state!=='inactive'){ mediaRec.onstop=null; mediaRec.stop(); } }catch(_){}
+  stopTracks();
+  if(abortCtl){ abortCtl.abort(); abortCtl=null; }
+  clearTimeout(wordTimer);
   if('speechSynthesis' in window) speechSynthesis.cancel();
-  recognizing=false; activeCard=null; hadError=false; restartCount=0;
-  committed=''; sessionFinal=''; prevWordCount=0;
+  recording=false; analyzing=false; activeCard=null; chunks=[];
   const card=document.getElementById('resultCard');
   const clear=()=>{
     document.getElementById('transcript').innerHTML='';
@@ -549,110 +433,140 @@ function resetApp(){
   anim(card,{opacity:[1,0],transform:['translateY(0)','translateY(8px)']},{duration:.25}).finished.then(clear);
 }
 
-/* ----- main recording (continuous) ----- */
-function toggleRec(){
-  if(!SR){ document.getElementById('notice').classList.add('show'); return; }
-  if(recognizing){ userStopped=true; if(rec) rec.stop(); return; }
-  // continuous=true triggers a well-known Android Chrome bug where each new "final" result
-  // restates the ENTIRE utterance so far instead of just the new segment, so summing all
-  // finals compounds into runaway repeated text. Using continuous=false (short, predictable
-  // single-utterance sessions) and manually chaining restarts avoids that failure mode.
-  rec=makeRec(false);
-  const mic=document.getElementById('mic'), bars=document.getElementById('bars');
-  userStopped=false; hadError=false; restartCount=0; committed=''; sessionFinal=''; prevWordCount=0;
-  rec.onstart=()=>{ recognizing=true; mic.classList.add('rec');
-    mic.setAttribute('aria-label','Stop recording'); mic.setAttribute('aria-pressed','true');
-    bars.classList.add('on'); setLabel('Listening… tap the mic again to stop', true); };
-  rec.onresult=(e)=>{
-    let interim='';
-    for(let i=e.resultIndex;i<e.results.length;i++){ const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) sessionFinal+=t+' '; else interim+=t; }
-    liveTranscript((committed+sessionFinal+' '+interim).trim());
-  };
-  rec.onerror=(e)=>{
-    if(e.error==='no-speech' && (committed+sessionFinal).trim()) return; // already have text; let it keep going
-    showError(e.error);
-  };
-  rec.onend=()=>{
-    // continuous=false ends after every natural pause — restart to chain sessions into one
-    // continuous-feeling recording until the user taps stop. Cap is just a runaway-loop guard.
-    if(!userStopped && !hadError && restartCount<100){
-      committed += sessionFinal; sessionFinal=''; restartCount++;
-      try{ rec.start(); return; }catch(_){ /* fall through and finalize */ }
-    }
-    recognizing=false; micIdle();
-    if(hadError){ hadError=false; document.getElementById('resultCard').classList.add('hide'); return; }
-    const full = norm(committed+sessionFinal);
-    if(!full){ showError('no-speech'); hadError=false; return; }
-    setLabel('Tap the microphone and speak in English');
-    buildResult(full);
-  };
+/* ----- main recording (MediaRecorder → /api/analyze) ----- */
+async function toggleRec(){
+  if(analyzing) return;
+  if(recording){ stopMain(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ showError('no-mic'); return; }
+  let stream;
+  try{ stream=await openMic(); }
+  catch(err){
+    const denied = err && (err.name==='NotAllowedError' || err.name==='SecurityError');
+    showError(denied ? 'mic-denied' : 'no-mic');
+    if(denied) document.getElementById('notice').classList.add('show');
+    return;
+  }
+  document.getElementById('notice').classList.remove('show');
+  mediaStream=stream;
+  recMime=pickMime();
+  try{ mediaRec = recMime ? new MediaRecorder(stream,{mimeType:recMime}) : new MediaRecorder(stream); }
+  catch(_){ mediaRec = new MediaRecorder(stream); }
+  recMime = mediaRec.mimeType || recMime || 'audio/webm';
+  chunks=[]; recStartedAt=Date.now();
+  mediaRec.ondataavailable=(e)=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  mediaRec.onstop=()=>{ stopTracks(); finishMain(); };
+  mediaRec.start(250);                                  // 250ms chunks
+  recording=true;
+  const mic=document.getElementById('mic');
+  mic.classList.add('rec'); mic.setAttribute('aria-label','Stop recording'); mic.setAttribute('aria-pressed','true');
+  document.getElementById('bars').classList.add('on');
+  setLabel('Listening… tap the mic again to stop', true);
   document.getElementById('resultCard').classList.add('hide');
-  try{ rec.start(); }catch(_){ recognizing=false; }
+  setTimeout(()=>{ if(recording && Date.now()-recStartedAt >= MAX_SECONDS*1000) stopMain(); }, MAX_SECONDS*1000);
 }
+function stopMain(){
+  if(!recording) return;
+  recording=false; micIdle();
+  try{ mediaRec.stop(); }catch(_){ stopTracks(); }
+}
+async function finishMain(){
+  const dur=Date.now()-recStartedAt;
+  const blob=new Blob(chunks,{type:recMime}); chunks=[];
+  if(dur<MIN_MS || blob.size<2000){ showError('too-short'); return; }
+  if(blob.size>4*1024*1024){ showError('too-long'); return; }
 
-function liveTranscript(text){
+  analyzing=true;
+  setLabel('Analyzing your English…');
   const card=document.getElementById('resultCard');
   const wasHidden=card.classList.contains('hide');
   card.classList.remove('hide');
-  if(wasHidden){ prevWordCount=0; anim(card,{opacity:[0,1],transform:['translateY(14px)','translateY(0)']},{duration:.45,ease:[.22,1,.36,1]}); }
-  const box=document.getElementById('transcript');
-  const words = text.trim()? text.trim().split(/\s+/) : [];
-  box.innerHTML = words.length? words.map(w=>`<span class="w">${escapeHtml(w)}</span>`).join(' ')
-    : '<span class="ph">Listening…</span>';
+  document.getElementById('transcript').innerHTML='<span class="ph">Analyzing…</span>';
   document.getElementById('fixWrap').innerHTML='';
-  if(words.length>prevWordCount){
-    const fresh=Array.prototype.slice.call(box.querySelectorAll('.w'), prevWordCount);
-    if(fresh.length) anim(fresh,{opacity:[0,1]},{duration:.25});
-  }
-  prevWordCount=words.length;
+  if(wasHidden) anim(card,{opacity:[0,1],transform:['translateY(14px)','translateY(0)']},{duration:.45,ease:[.22,1,.36,1]});
+
+  abortCtl=new AbortController();
+  const timeout=setTimeout(()=>{ if(abortCtl) abortCtl.abort(); }, 25000);
+  try{
+    const res=await fetch('/api/analyze',{method:'POST', headers:{'Content-Type':recMime}, body:blob, signal:abortCtl.signal});
+    clearTimeout(timeout);
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      analyzing=false; card.classList.add('hide');
+      showError(err.error || 'server-error');
+      return;
+    }
+    const data=await res.json();
+    analyzing=false;
+    setLabel('Tap the microphone and speak in English');
+    renderAnalysis(data);
+  }catch(e){
+    clearTimeout(timeout);
+    analyzing=false; card.classList.add('hide');
+    showError(e && e.name==='AbortError' ? 'server-error' : 'network');
+  }finally{ abortCtl=null; }
 }
 
-function buildResult(heard){
+/* ----- render the analysis JSON (contract from /api/analyze) ----- */
+function renderAnalysis(data){
   const card=document.getElementById('resultCard'); card.classList.remove('hide');
   const box=document.getElementById('transcript'), wrap=document.getElementById('fixWrap');
-  if(!heard){ box.innerHTML='<span class="ph">We didn\'t catch that. Try speaking a bit closer to the microphone.</span>'; wrap.innerHTML=''; announce("We didn't catch that. Try again."); return; }
-  const words=heard.split(' ').filter(Boolean); const found=[];
-  box.innerHTML=words.map((w)=>{
-    const c=w.replace(/[^a-z']/g,'');
-    const canon=lookupTricky(c);
-    if(canon && !found.some(f=>f.word===canon)){ found.push({word:canon, id:'w'+found.length}); }
-    const idx = canon ? found.findIndex(f=>f.word===canon) : -1;
-    return canon ? `<span class="w flag" data-fw="${found[idx].id}">${escapeHtml(w)}</span>`
-                 : `<span class="w">${escapeHtml(w)}</span>`;
-  }).join(' ');
-
-  if(!found.length){
-    wrap.innerHTML='<div class="clean"><i data-lucide="badge-check"></i>No classic tricky sounds spotted. Nicely done!</div>';
-    refreshIcons();
-    anim('.clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
-    announce('Heard: '+heard+'. No tricky words found. Nicely done.');
-    return;
+  const words=Array.isArray(data.transcript)? data.transcript : [];
+  if(!words.length){
+    box.innerHTML='<span class="ph">We didn\'t catch that. Try speaking a bit closer to the microphone.</span>';
+    wrap.innerHTML=''; announce("We didn't catch that. Try again."); return;
   }
 
-  wrap.innerHTML = '<div class="fixhead"><i data-lucide="pencil-line"></i>Words to practise</div><div class="fixlist">' +
-    found.map(f=>`
-      <div class="fw" id="${f.id}">
-        <div class="fw-head">
-          <div class="fw-word">${escapeHtml(f.word)}
-            <span class="fw-check" aria-hidden="true"><i data-lucide="check"></i></span>
-            <span class="fw-done-label">Done</span>
-          </div>
-        </div>
-        <div class="fw-tip">${TRICKY[f.word]}</div>
+  box.innerHTML = words.map(t =>
+    (t.status==='flag' && t.card_id)
+      ? `<span class="w flag" data-fw="${escapeHtml(t.card_id)}">${escapeHtml(t.word)}</span>`
+      : `<span class="w">${escapeHtml(t.word)}</span>`
+  ).join(' ');
+
+  let html='';
+  if(data.corrected && data.corrected.trim()){
+    html += `<div class="corrected"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${escapeHtml(data.corrected)}</div></div>`;
+  }
+
+  const cards=Array.isArray(data.cards)? data.cards : [];
+  if(cards.length){
+    html += '<div class="fixhead"><i data-lucide="pencil-line"></i>Things to practise</div><div class="fixlist">' +
+      cards.map(c=>{
+        const w=escapeHtml(c.word), id=escapeHtml(c.id), type=escapeHtml(c.type);
+        const actions = c.practice ? `
         <div class="fw-actions">
-          <button class="act hear" onclick="hearWord('${f.word}')" aria-label="Hear the word ${f.word}">
+          <button class="act hear" data-w="${w}" onclick="hearWord(this.dataset.w)" aria-label="Hear the word ${w}">
             <i data-lucide="volume-2"></i>Hear it
           </button>
-          <button class="act say" id="say_${f.id}" onclick="sayWord('${f.word}','${f.id}')" aria-label="Record yourself saying ${f.word}">
+          <button class="act say" id="say_${id}" data-w="${w}" data-id="${id}" onclick="sayWord(this.dataset.w,this.dataset.id)" aria-label="Record yourself saying ${w}">
             <i data-lucide="mic"></i>Say it
           </button>
         </div>
-        <div class="fw-status" id="st_${f.id}" role="status" aria-live="polite"></div>
-      </div>`).join('') + '</div>';
+        <div class="fw-status" id="st_${id}" role="status" aria-live="polite"></div>` : '';
+        return `
+      <div class="fw${c.practice?' fw-practice':''}" id="${id}">
+        <div class="fw-head">
+          <div class="fw-word">${w}
+            <span class="fw-check" aria-hidden="true"><i data-lucide="check"></i></span>
+            <span class="fw-done-label">Done</span>
+          </div>
+          <span class="fw-type ${type}">${type}</span>
+        </div>
+        <div class="fw-tip">${escapeHtml(c.tip)}</div>
+        ${actions}
+      </div>`;
+      }).join('') + '</div>';
+  }
+  if(data.praise && data.praise.trim()){
+    html += `<div class="clean"><i data-lucide="badge-check"></i>${escapeHtml(data.praise)}</div>`;
+  } else if(!cards.length){
+    html += '<div class="clean"><i data-lucide="badge-check"></i>Nothing to fix — nicely done!</div>';
+  }
+  wrap.innerHTML=html;
   refreshIcons();
-  anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
-  announce('Heard: '+heard+'. '+found.length+(found.length===1?' word':' words')+' to practise.');
+  anim('.corrected, .clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
+  if(cards.length) anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
+  const heard=words.map(t=>t.word).join(' ');
+  announce('Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
 }
 
 /* ----- hear correct pronunciation ----- */
@@ -667,77 +581,62 @@ function hearWord(word){
   speechSynthesis.speak(u);
 }
 
-/* ----- stricter word matching ----- */
-function lev(a,b){
-  const m=a.length, n=b.length;
-  if(!m) return n; if(!n) return m;
-  let prev=new Array(n+1), cur=new Array(n+1);
-  for(let j=0;j<=n;j++) prev[j]=j;
-  for(let i=1;i<=m;i++){
-    cur[0]=i;
-    for(let j=1;j<=n;j++){
-      const cost=a[i-1]===b[j-1]?0:1;
-      cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost);
-    }
-    const t=prev; prev=cur; cur=t;
-  }
-  return prev[n];
-}
-/* minimal pairs the app exists to teach — never let a fuzzy match pass one for another */
-const CONFUSABLE = {
-  three:['tree','free'], tree:['three'], free:['three'],
-  ship:['sheep'], sheep:['ship'],
-  live:['leave'], leave:['live'],
-  thing:['sing','ting'], think:['sink','fink','tink'],
-  very:['wery','berry'], west:['vest'], water:['vater'], we:['v','vee']
-};
-function matchesTarget(word, said){
-  const tokens=said.split(' ').filter(Boolean);
-  if(tokens.includes(word)) return true;                 // exact token — word inside a phrase still passes
-  const tol = word.length>=6 ? 2 : word.length>=4 ? 1 : 0;
-  if(!tol) return false;                                 // short words: exact match only
-  return tokens.some(h=>{
-    if(CONFUSABLE[word] && CONFUSABLE[word].indexOf(h)!==-1) return false;
-    return Math.abs(h.length-word.length)<=tol && lev(h,word)<=tol;
-  });
-}
-
-/* ----- record a single word and check ----- */
-function sayWord(word,id){
-  if(!SR) return;
-  if(activeCard){ if(wordRec) wordRec.stop(); return; }
+/* ----- record a single word and check it via /api/verify ----- */
+async function sayWord(word,id){
+  if(activeCard===id){ stopWordRec(); return; }          // second tap stops early
+  if(activeCard || recording || analyzing) return;
   const btn=document.getElementById('say_'+id), st=document.getElementById('st_'+id);
-  wordRec=makeRec(false); activeCard=id;
-  let got='', wordHadError=false;
-  wordRec.onstart=()=>{ btn.classList.add('rec'); st.textContent='Listening… say "'+word+'"'; st.classList.remove('bad'); };
-  wordRec.onresult=(e)=>{ for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) got+=e.results[i][0].transcript+' '; } };
-  wordRec.onerror=(e)=>{
-    if(e.error==='aborted' || e.error==='no-speech') return;   // handled by onend's normal "try again" path
-    wordHadError=true; st.textContent = ERR_MSGS[e.error] || "We couldn't hear that — try again"; st.classList.add('bad');
+  let stream;
+  try{ stream=await openMic(); }
+  catch(_){ st.textContent=ERR_MSGS['mic-denied']; st.classList.add('bad'); return; }
+  mediaStream=stream; activeCard=id;
+  const mime=pickMime();
+  try{ mediaRec = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }
+  catch(_){ mediaRec = new MediaRecorder(stream); }
+  const usedMime=mediaRec.mimeType || mime || 'audio/webm';
+  const localChunks=[];
+  mediaRec.ondataavailable=(e)=>{ if(e.data && e.data.size) localChunks.push(e.data); };
+  mediaRec.onstop=async ()=>{
+    stopTracks(); clearTimeout(wordTimer);
+    btn.classList.remove('rec');
+    const wasActive = activeCard===id; activeCard=null;
+    if(!wasActive) return;
+    const blob=new Blob(localChunks,{type:usedMime});
+    if(blob.size<1500){ st.textContent="We didn't catch it — try again"; st.classList.add('bad'); return; }
+    st.textContent='Checking…'; st.classList.remove('bad');
+    try{
+      const res=await fetch('/api/verify?word='+encodeURIComponent(word),
+        {method:'POST', headers:{'Content-Type':usedMime}, body:blob});
+      if(!res.ok){
+        const err=await res.json().catch(()=>({}));
+        st.textContent=ERR_MSGS[err.error] || ERR_MSGS['server-error']; st.classList.add('bad'); return;
+      }
+      const v=await res.json();
+      if(v.pass){
+        const cardEl=document.getElementById(id);
+        cardEl.classList.add('done'); st.textContent='';
+        anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
+        document.querySelectorAll('[data-fw="'+id+'"]').forEach(sp=>{ sp.classList.remove('flag'); sp.classList.add('done'); });
+        announce(word+' pronounced correctly.');
+        checkAllDone();
+      } else {
+        st.textContent = v.feedback || 'Try once more'; st.classList.add('bad');
+      }
+    }catch(_){ st.textContent=ERR_MSGS['network']; st.classList.add('bad'); }
   };
-  wordRec.onend=()=>{
-    btn.classList.remove('rec'); activeCard=null;
-    if(wordHadError) return;
-    const said=norm(got);
-    const hit = said && matchesTarget(word, said);
-    if(hit){
-      const cardEl=document.getElementById(id);
-      cardEl.classList.add('done'); st.textContent='';
-      anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
-      document.querySelectorAll('[data-fw="'+id+'"]').forEach(sp=>{ sp.classList.remove('flag'); sp.classList.add('done'); });
-      announce(word+' pronounced correctly.');
-      checkAllDone();
-    } else {
-      st.textContent = said? 'We heard "'+said.trim()+'" — try once more' : 'We didn\'t catch it — try again';
-      st.classList.add('bad');
-    }
-  };
-  try{ wordRec.start(); }catch(_){ activeCard=null; }
+  mediaRec.start(250);
+  btn.classList.add('rec');
+  st.textContent='Listening… say "'+word+'"'; st.classList.remove('bad');
+  wordTimer=setTimeout(stopWordRec, 4000);               // auto-stop after 4s
+}
+function stopWordRec(){
+  try{ if(mediaRec && mediaRec.state!=='inactive') mediaRec.stop(); }catch(_){ stopTracks(); }
 }
 
 function checkAllDone(){
-  const cards=document.querySelectorAll('.fw');
-  const done=document.querySelectorAll('.fw.done');
+  // only practice (pronunciation) cards are completable — grammar/vocab cards are read-only
+  const cards=document.querySelectorAll('.fw.fw-practice');
+  const done=document.querySelectorAll('.fw.fw-practice.done');
   if(cards.length && cards.length===done.length){
     const wrap=document.getElementById('fixWrap');
     if(!document.getElementById('allgreen')){

@@ -1,0 +1,153 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from "@deepgram/sdk";
+import Anthropic from "@anthropic-ai/sdk";
+
+// We read the raw audio body ourselves — no JSON body parsing.
+export const config = { api: { bodyParser: false } };
+
+const MAX_BYTES = 4 * 1024 * 1024; // Vercel request body limit is 4.5MB
+const LOW_CONFIDENCE = 0.85;       // below this, a word is flagged as a pronunciation suspect
+const MODEL = "claude-haiku-4-5";  // swap for "claude-opus-4-8" for higher quality analysis
+
+/* ---------- best-effort per-instance rate limit ---------- */
+const hits = new Map<string, { n: number; t: number }>();
+function rateLimited(ip: string, max = 20, windowMs = 60_000): boolean {
+  const now = Date.now();
+  const h = hits.get(ip);
+  if (!h || now - h.t > windowMs) { hits.set(ip, { n: 1, t: now }); return false; }
+  h.n++;
+  return h.n > max;
+}
+
+async function readBody(req: VercelRequest): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
+}
+
+/* ---------- structured output schema (shape guaranteed by the API) ---------- */
+const ANALYZE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["transcript", "cards", "corrected", "praise"],
+  properties: {
+    transcript: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["word", "status", "card_id"],
+        properties: {
+          word: { type: "string" },
+          status: { type: "string", enum: ["ok", "flag"] },
+          card_id: { type: "string" }, // "" when status is "ok"
+        },
+      },
+    },
+    cards: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "word", "type", "tip", "practice"],
+        properties: {
+          id: { type: "string" },
+          word: { type: "string" },
+          type: { type: "string", enum: ["pronunciation", "grammar", "vocabulary"] },
+          tip: { type: "string" },
+          practice: { type: "boolean" },
+        },
+      },
+    },
+    corrected: { type: "string" },
+    praise: { type: "string" },
+  },
+} as const;
+
+const SYSTEM_PROMPT = `You are the analysis engine of SpeakCheck, a friendly English coaching app for language learners at a school in Australia.
+
+You receive JSON: {"words": [{"word": "...", "confidence": 0.0-1.0}, ...]} — the output of a speech recognizer, in spoken order. Words with confidence below ${LOW_CONFIDENCE} are marked pronunciation suspects.
+
+Produce an analysis with:
+
+1. "transcript": echo EVERY input word, in the SAME order, spelled EXACTLY as given. Set status "flag" and a card_id for words with an issue; otherwise status "ok" and card_id "". If the same issue covers several words (e.g. a grammar issue spanning "go to beach"), flag each word with the SAME card_id.
+
+2. "cards": one per distinct issue, at most 5, most important first.
+   - type "pronunciation": ONLY for words listed as low-confidence suspects. practice=true. "word" is the single word to practise.
+   - type "grammar": wrong tense, missing article, agreement, word order. practice=false. "word" is a short label of the issue (e.g. "past tense", "article 'the'").
+   - type "vocabulary": an unnatural word choice where a clearly better word exists. practice=false. "word" is the better word.
+   - "tip": ONE short, encouraging, plain-language sentence. For pronunciation, describe the mouth/sound (e.g. "'th' — tongue between the teeth, not 't' or 's'."). For grammar/vocabulary, say what to use instead and why, briefly.
+   - "id": "c1", "c2", ... in order.
+
+3. "corrected": the natural, grammatically correct version of what the speaker meant. If the sentence is already natural, repeat it as-is.
+
+4. "praise": one short, specific positive sentence about something the speaker did well ("" only if the input is a single word or gibberish).
+
+Rules: do not invent words that are not in the input. Do not flag proper nouns, filler words ("uh", "um") or casual-but-correct speech. When in doubt, don't flag. Empty cards array is a valid, good outcome.`;
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "server-error" });
+
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
+  if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
+
+  try {
+    const audio = await readBody(req);
+    if (audio.length < 2000) return res.status(400).json({ error: "too-short" });
+    if (audio.length > MAX_BYTES) return res.status(413).json({ error: "too-long" });
+
+    /* ---------- 1. ASR: Deepgram ---------- */
+    const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
+    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(audio, {
+      model: "nova-3",
+      language: "en",
+      punctuate: false,
+      filler_words: true,
+    });
+    if (error) {
+      console.error("deepgram:", error);
+      return res.status(502).json({ error: "server-error" });
+    }
+
+    const alt = result?.results?.channels?.[0]?.alternatives?.[0];
+    const words = (alt?.words ?? []).map((w) => ({
+      word: w.word.toLowerCase(),
+      confidence: Math.round(w.confidence * 100) / 100,
+    }));
+    if (!words.length) return res.status(422).json({ error: "no-speech" });
+
+    /* ---------- 2. LLM: Claude with structured output ---------- */
+    const anthropic = new Anthropic(); // ANTHROPIC_API_KEY from env
+    const msg = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 1500,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM_PROMPT, // stable/frozen → cacheable prefix
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      output_config: { format: { type: "json_schema", schema: ANALYZE_SCHEMA } },
+      messages: [{ role: "user", content: JSON.stringify({ words }) }],
+    });
+
+    const text = msg.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text") {
+      console.error("no text block in response, stop_reason:", msg.stop_reason);
+      return res.status(502).json({ error: "server-error" });
+    }
+    const analysis = JSON.parse(text.text);
+
+    // Light sanity check: transcript must echo the recognizer's words.
+    if (!Array.isArray(analysis.transcript) || analysis.transcript.length === 0) {
+      return res.status(502).json({ error: "server-error" });
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).json(analysis);
+  } catch (err) {
+    console.error("analyze:", err);
+    return res.status(500).json({ error: "server-error" });
+  }
+}

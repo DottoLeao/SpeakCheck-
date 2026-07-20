@@ -2,9 +2,9 @@
 
 # SpeakCheck — Pronunciation Lab
 
-**A browser-based pronunciation coach for English learners.**
+**An AI-powered speech coach for English learners.**
 
-Speak freely, get the tricky words flagged in real time, and practise each one until your whole sentence turns green — all running 100% on-device, with zero dependencies and zero backend.
+Speak freely and get instant, personalized feedback on pronunciation, grammar, and vocabulary — powered by a professional Speech-to-Text-to-Text pipeline: MediaRecorder → Deepgram ASR → Claude analysis → structured JSON → live UI.
 
 <br>
 
@@ -26,53 +26,57 @@ Speak freely, get the tricky words flagged in real time, and practise each one u
 
 ## Overview
 
-SpeakCheck listens to you speak English, transcribes it live, and highlights the words that most commonly reveal a foreign accent — *th* sounds, R/L and V/W confusion, silent letters, vowel length, word stress. Each flagged word becomes an interactive card: **hear** the native pronunciation, then **say it back** until the app confirms you nailed it.
+SpeakCheck listens to you speak English and gives coaching feedback on three axes: **pronunciation** (via word-level confidence from a professional speech recognizer — a word transcribed with low confidence is a word your mouth distorted), **grammar**, and **vocabulary** (via LLM analysis). Each issue becomes a card: pronunciation cards are interactive (**hear** the native pronunciation, then **say it back** until you nail it), grammar/vocabulary cards explain the fix. You also get the natural, corrected version of your sentence.
 
 The interface is themed after [Pacific English Study](https://pacificenglishschool.com/), a real language school on the Gold Coast, Australia — built as a white-label branding exercise using the school's official colours and identity.
 
-**[→ Open the live demo](https://dottoleao.github.io/SpeakCheck-/)** *(Chrome on Android/desktop or Safari on iOS, microphone required)*
-
 ## Key features
 
-- **Free, continuous speech input** — no scripts to read; speak as long as you like and tap the mic to stop
-- **Smart flagging** — a curated dictionary of 45+ high-frequency pronunciation traps, language-agnostic
-- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording with verification that guards minimal pairs (*three*/*tree*, *ship*/*sheep*) instead of accepting loose partial matches
-- **Live transcription** — words render on screen while you're still speaking (interim results)
+- **Free speech input** — no scripts to read; speak up to a minute and tap the mic to stop
+- **Three feedback axes** — pronunciation (ASR confidence signal), grammar, and vocabulary (LLM), each with its own card style
+- **Natural version** — the corrected, natural phrasing of what you said, shown alongside the transcript
+- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording verified server-side (minimal pairs like *three*/*tree* are naturally protected: the recognizer transcribes what you actually said)
 - **Teacher-style corrections** — flagged words get a red wavy underline (plus a ⚠/✓ marker) that turns green when fixed
-- **Light & dark mode** — follows the system colour scheme automatically
-- **Accessible** — live status regions for screen readers, descriptive mic/button labels, and non-colour cues for flagged vs. corrected words
-- **Clear error feedback** — distinct messages for denied permission, no speech, no microphone, or no connection
-- **Fully private** — audio never leaves the device; no server, no tracking, no accounts
+- **Light & dark mode**, **screen-reader accessible**, **micro-interactions** with `prefers-reduced-motion` support
+- **Clear error feedback** — distinct messages for denied permission, silence, short/long recordings, network and server errors
 
 ## How it works
 
 ```
-Microphone → SpeechRecognition (interim + final results)
-           → text normalisation → dictionary matching
-           → correction cards → SpeechSynthesis playback
-           → per-word re-recognition → fuzzy match → pass/fail
+MediaRecorder (250ms chunks → Blob)
+  → POST /api/analyze  ─→ Deepgram Nova-3 (words + confidence)
+                       ─→ Claude (claude-haiku-4-5, structured JSON output)
+  → JSON contract      ─→ transcript flags + cards + corrected sentence
+  → POST /api/verify   ─→ Deepgram + exact-token match  (the "Say it" check)
 ```
 
 | Layer | Choice | Why |
 |---|---|---|
-| Speech-to-text | **Web Speech API** (`SpeechRecognition`) | On-device/browser-native STT, no API costs, works offline-ish |
-| Text-to-speech | **SpeechSynthesis API** | Native voices, rate control for slow playback |
-| UI | **Vanilla HTML/CSS/JS** | Single file, no build step, instant load on any phone |
-| Icons | **Lucide** (pinned) | Consistent icon system, re-hydrated after dynamic DOM injection |
-| Animation | **Motion** (motion.dev, pinned) | Compositor-accelerated micro-interactions; auto-disabled under `prefers-reduced-motion` |
-| Verification | Token + bounded Levenshtein matching | Accepts recognition variance but rejects confusable minimal pairs |
-
-The core insight: when an accent distorts a word enough, the speech engine *mishears it* (e.g. *think* → *sink*). SpeakCheck exploits that as a free pronunciation signal — no acoustic analysis needed.
+| Audio capture | **MediaRecorder API** | Consistent across browsers (webm/opus; mp4 on iOS Safari) — replaces the flaky `SpeechRecognition` |
+| Speech-to-text | **Deepgram Nova-3** | Fast, accurate ASR with word-level confidence — the pronunciation signal |
+| Analysis | **Claude Haiku 4.5** (structured outputs) | Grammar/vocabulary coaching with a guaranteed JSON schema — no parse errors |
+| Backend | **Vercel serverless functions** (TypeScript) | Keys stay server-side; zero-ops deploys |
+| Text-to-speech | **SpeechSynthesis API** (client) | Native voices, rate control, free |
+| UI | **Vanilla HTML/CSS/JS** | Single file, no build step, instant load |
+| Icons / Animation | **Lucide** + **Motion** (pinned CDN) | Micro-interactions, auto-disabled under `prefers-reduced-motion` |
 
 ## Running locally
 
-It's a single `index.html`. Clone and open it — that's it.
-
 ```bash
 git clone https://github.com/DottoLeao/SpeakCheck-.git
+cd SpeakCheck-
+npm install
+npx vercel dev        # serves index.html + /api functions on localhost:3000
 ```
 
-> Speech recognition requires Chrome (desktop/Android) or Safari (iOS) and microphone permission.
+Set two environment variables (locally in `.env` / on Vercel in Project Settings):
+
+```
+DEEPGRAM_API_KEY=...   # console.deepgram.com — generous free tier
+ANTHROPIC_API_KEY=...  # console.anthropic.com
+```
+
+> Microphone capture requires HTTPS or localhost. Deploying is `vercel --prod` (or connect the repo on vercel.com).
 
 ## Roadmap
 
