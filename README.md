@@ -18,7 +18,7 @@ Speak freely, get the tricky words flagged in real time, and practise each one u
 
 <br>
 
-<img src="img" alt="SpeakCheck demo" width="420">
+<img src="img.png" alt="SpeakCheck demo" width="420">
 
 </div>
 
