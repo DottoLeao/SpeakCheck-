@@ -890,7 +890,9 @@ function renderAnalysis(data){
   if(score!=null){
     const C=2*Math.PI*34;
     const val=wrap.querySelector('.score-ring circle.val');
-    requestAnimationFrame(()=>{ if(val) val.style.strokeDashoffset=(C*(1-score/100)).toFixed(1); });
+    // setTimeout (not rAF) so the ring still fills if paint is throttled/backgrounded;
+    // the small delay lets the CSS transition animate from full → target.
+    setTimeout(()=>{ if(val) val.style.strokeDashoffset=(C*(1-score/100)).toFixed(1); }, 30);
     const numEl=document.getElementById('scoreNum');
     if(numEl){
       if(REDUCED){ numEl.textContent=score; }
