@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
+import { trackVerify } from "../lib/usage";
 
 // Raw audio body — no JSON body parsing.
 export const config = { api: { bodyParser: false } };
@@ -62,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : heard
         ? `We heard "${heard}" — try once more`
         : "We didn't catch it — try again";
+
+    await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass });
 
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({ pass, heard, feedback });

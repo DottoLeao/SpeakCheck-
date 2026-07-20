@@ -75,14 +75,23 @@ npm install
 npx vercel dev        # serves index.html + /api functions on localhost:3000
 ```
 
-Set two environment variables (locally in `.env` / on Vercel in Project Settings):
+Set environment variables (locally in `.env.local` / on Vercel in Project Settings):
 
 ```
-DEEPGRAM_API_KEY=...   # console.deepgram.com — generous free tier
-ANTHROPIC_API_KEY=...  # console.anthropic.com
+DEEPGRAM_API_KEY=...   # console.deepgram.com — generous free tier   (required)
+ANTHROPIC_API_KEY=...  # console.anthropic.com                        (required)
+ADMIN_PASSWORD=...      # gate for the /admin dashboard               (required for /admin)
 ```
 
 > Microphone capture requires HTTPS or localhost. Deploying is `vercel --prod` (or connect the repo on vercel.com).
+
+## Admin dashboard (`/admin`)
+
+A password-gated page at **`/admin`** shows live API usage, estimated cost (Deepgram + Claude broken out), a 14-day activity chart, and an interactive **capacity & cost planner** — set your class size and usage profile to project the monthly cost and how many students a given budget supports. The password lives in the `ADMIN_PASSWORD` secret and is verified server-side (`/api/admin-stats`); it's never in the client. There's no user/login system — just the one gate.
+
+**Live counters** are persisted in a KV store (Vercel KV / Upstash Redis). It's optional: without it the dashboard still shows the cost model and planner, just with zeroed counters. To enable it, in your Vercel project go to **Storage → Create Database → Upstash for Redis** (free tier) and redeploy — Vercel injects `KV_REST_API_URL` / `KV_REST_API_TOKEN` automatically, and [lib/usage.ts](lib/usage.ts) picks them up with no code change.
+
+> Capacity at this scale: a 20-student class at moderate use (~8 analyses + 6 "say it" checks per student, twice a week) costs roughly **$6/month** total. The bottleneck is ongoing cost (cents), not concurrency; Deepgram's free credit alone covers many months. Adjust the planner's assumptions to fit your class.
 
 ## Roadmap
 

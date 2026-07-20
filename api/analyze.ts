@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
 import Anthropic from "@anthropic-ai/sdk";
+import { trackAnalyze } from "../lib/usage";
 
 // We read the raw audio body ourselves — no JSON body parsing.
 export const config = { api: { bodyParser: false } };
@@ -160,11 +161,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Record usage for the /admin dashboard (no-op if KV isn't configured; never blocks the result).
+    const u = msg.usage as any;
+    await trackAnalyze({
+      seconds: result?.metadata?.duration ?? 0,
+      inTok: u?.input_tokens ?? 0,
+      outTok: u?.output_tokens ?? 0,
+      cacheRead: u?.cache_read_input_tokens ?? 0,
+      cacheCreate: u?.cache_creation_input_tokens ?? 0,
+    });
+
     res.setHeader("Cache-Control", "no-store");
     // Attach the raw recognizer words (confidence + timings) alongside the LLM analysis.
     return res.status(200).json({ ...analysis, words: dgWords });
   } catch (err) {
     console.error("analyze:", err);
+    trackAnalyze({ error: true }).catch(() => {});
     return res.status(500).json({ error: "server-error" });
   }
 }
