@@ -3,175 +3,324 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SoundCheck — English Pronunciation Practice</title>
+<title>Pronunciation Lab — Pacific English Study</title>
+<meta name="theme-color" content="#3B53A4" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root{
-    --ink:#15233F; --muted:#5E6B85; --line:#E6EBF3;
-    --blue:#3B53A4; --blue-deep:#2C3F82; --ocean:#4C7EF3; --sky:#EAF1FB;
-    --green:#66BC29; --green-deep:#4E9E1E; --green-soft:#E9F6DD;
-    --sun:#FFC02E; --sand:#FFF7E6;
-    --ok:#4E9E1E; --ok-bg:#E9F6DD; --wrong:#E5484D; --wrong-bg:#FCEBEB;
-    --surface:#FFFFFF; --bg:#F3F7FC;
-    --shadow:0 14px 34px -16px rgba(21,35,63,.28);
+    --navy:#3B53A4; --navy-deep:#2C3F82; --navy-tint:#EDF1FA;
+    --green:#66BC29; --green-deep:#4E9E1E; --green-tint:#EFF8E6;
+    --ink:#182448; --muted:#5F6B87; --line:#E3E9F4;
+    --paper:#FFFFFF; --mist:#F6F8FC;
+    --err:#C9403A; --err-tint:#FBEFEE;
+    --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{font-family:"Inter",system-ui,sans-serif;background:var(--bg);color:var(--ink);
-    line-height:1.55;min-height:100vh}
-  .wrap{max-width:580px;margin:0 auto;padding:0 16px 60px}
+  body{
+    font-family:"Instrument Sans",system-ui,sans-serif;
+    background:var(--mist); color:var(--ink);
+    line-height:1.6; min-height:100vh; font-size:16px;
+  }
+  h1,h2,h3,.display{font-family:"Schibsted Grotesk",system-ui,sans-serif}
+  button{font-family:inherit}
+  .lucide{width:18px;height:18px;stroke-width:2}
 
-  /* HERO */
-  .hero{position:relative;margin:0 -16px 0;padding:26px 24px 72px;overflow:hidden;
-    background:linear-gradient(160deg,var(--ocean) 0%,var(--blue) 55%,var(--blue-deep) 100%);
-    color:#fff;text-align:center}
-  .hero .sun{position:absolute;top:-40px;right:-30px;width:150px;height:150px;border-radius:50%;
-    background:radial-gradient(circle at 50% 50%,rgba(255,192,46,.9),rgba(255,192,46,0) 68%);filter:blur(2px)}
-  .brandbar{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:22px;position:relative;z-index:2}
-  .brandbar .logo{width:26px;height:26px;border-radius:8px;background:var(--green);display:grid;place-items:center;box-shadow:0 4px 12px -2px rgba(0,0,0,.25)}
-  .brandbar .logo svg{width:15px;height:15px}
-  .brandbar span{font-family:"Poppins";font-weight:700;font-size:14px;letter-spacing:.02em}
-  .brandbar span b{color:var(--sun)}
-  .hero h1{font-family:"Poppins";font-weight:800;font-size:clamp(30px,8.4vw,42px);line-height:1.08;letter-spacing:-.02em;position:relative;z-index:2}
-  .hero h1 em{font-style:normal;color:#B6F06B}
-  .hero p{margin:14px auto 0;max-width:34ch;font-size:15px;color:rgba(255,255,255,.9);position:relative;z-index:2}
-  .wave{position:absolute;left:0;right:0;bottom:-1px;width:100%;display:block}
+  /* ---------- Institutional top strip ---------- */
+  .topstrip{
+    background:var(--navy-deep); color:#C6D2F0;
+    font-size:12.5px; letter-spacing:.01em;
+  }
+  .topstrip .inner{
+    max-width:920px; margin:0 auto; padding:7px 20px;
+    display:flex; justify-content:space-between; gap:12px;
+  }
+  .topstrip span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:24px 20px;box-shadow:var(--shadow);margin:-40px 0 16px;position:relative;z-index:3}
-  .card + .card{margin-top:16px}
-  .eyebrow{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green-deep);margin-bottom:16px;display:flex;align-items:center;gap:8px;font-weight:700}
-  .eyebrow::before{content:"";width:20px;height:3px;background:var(--green);border-radius:3px}
+  /* ---------- Navbar ---------- */
+  .nav{
+    background:var(--paper); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  .nav .inner{
+    max-width:920px; margin:0 auto; padding:12px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:11px; text-decoration:none; color:var(--ink)}
+  .brand img{width:40px; height:40px; object-fit:contain; display:block}
+  .brand .name{line-height:1.15}
+  .brand .name strong{
+    display:block; font-family:"Schibsted Grotesk"; font-weight:700;
+    font-size:15px; letter-spacing:-.01em;
+  }
+  .brand .name small{display:block; font-size:11px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase}
+  .nav .tag{
+    font-size:12px; font-weight:600; color:var(--navy);
+    background:var(--navy-tint); border:1px solid #D5DEF4;
+    padding:5px 12px; border-radius:999px; white-space:nowrap;
+    display:flex; align-items:center; gap:6px;
+  }
+  .nav .tag .lucide{width:14px;height:14px}
 
-  /* Mic */
-  .mic-zone{display:flex;flex-direction:column;align-items:center;gap:14px}
-  .mic-btn{position:relative;width:100px;height:100px;border-radius:50%;border:0;cursor:pointer;
-    background:linear-gradient(150deg,var(--green),var(--green-deep));color:#fff;display:grid;place-items:center;
-    box-shadow:0 12px 26px -8px var(--green-deep);transition:.2s}
+  /* ---------- Page header ---------- */
+  .head{background:var(--paper); border-bottom:1px solid var(--line)}
+  .head .inner{max-width:920px; margin:0 auto; padding:44px 20px 40px; text-align:left}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--green-deep); margin-bottom:14px;
+  }
+  .eyebrow::before{content:""; width:22px; height:2px; background:var(--green)}
+  .head h1{
+    font-weight:800; letter-spacing:-.025em; color:var(--ink);
+    font-size:clamp(30px,6.5vw,42px); line-height:1.08; max-width:16ch;
+  }
+  .head h1 em{font-style:normal; color:var(--navy)}
+  .head p{margin-top:14px; max-width:52ch; color:var(--muted); font-size:16.5px}
+
+  /* ---------- Main ---------- */
+  .wrap{max-width:640px; margin:0 auto; padding:28px 20px 0}
+
+  .card{
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--radius); padding:28px 24px;
+    box-shadow:0 1px 2px rgba(24,36,72,.04), 0 12px 32px -24px rgba(24,36,72,.18);
+  }
+  .card + .card{margin-top:18px}
+  .card h2{
+    font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--navy); display:flex; align-items:center; gap:8px; margin-bottom:18px;
+  }
+  .card h2 .lucide{width:16px;height:16px}
+
+  /* ---------- Mic ---------- */
+  .mic-zone{display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 0 2px}
+  .mic-btn{
+    position:relative; width:96px; height:96px; border-radius:50%; border:0; cursor:pointer;
+    background:var(--navy); color:#fff; display:grid; place-items:center;
+    box-shadow:0 10px 24px -10px rgba(44,63,130,.55);
+    transition:transform .15s ease, background .2s ease;
+  }
+  .mic-btn:hover{background:var(--navy-deep)}
   .mic-btn:active{transform:scale(.96)}
-  .mic-btn svg{width:38px;height:38px}
-  .mic-btn.rec{background:linear-gradient(150deg,#FF5A5F,#E5484D);box-shadow:0 12px 26px -8px #E5484D}
-  .ring{position:absolute;inset:0;border-radius:50%;pointer-events:none}
-  .mic-btn.rec .ring{animation:pulse 1.4s ease-out infinite;border:3px solid #E5484D;opacity:0}
-  @keyframes pulse{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.7);opacity:0}}
-  .mic-label{font-size:14px;color:var(--muted);font-weight:500;min-height:20px;text-align:center}
-  .mic-label.live{color:var(--wrong);font-weight:600}
-  .bars{display:flex;align-items:flex-end;gap:4px;height:26px}
-  .bars span{width:4px;background:var(--green);border-radius:3px;height:6px}
+  .mic-btn:focus-visible{outline:3px solid var(--green); outline-offset:3px}
+  .mic-btn .lucide{width:36px;height:36px}
+  .mic-btn.rec{background:var(--err); box-shadow:0 10px 24px -10px rgba(201,64,58,.6)}
+  .ring{position:absolute; inset:0; border-radius:50%; pointer-events:none}
+  .mic-btn.rec .ring{animation:pulse 1.4s ease-out infinite; border:3px solid var(--err); opacity:0}
+  @keyframes pulse{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.7);opacity:0}}
+  .mic-label{font-size:14.5px; color:var(--muted); font-weight:500; min-height:20px; text-align:center}
+  .mic-label.live{color:var(--err); font-weight:600}
+  .bars{display:flex; align-items:flex-end; gap:4px; height:24px}
+  .bars span{width:4px; background:var(--green); border-radius:3px; height:6px}
   .bars.on span{animation:bar .9s ease-in-out infinite}
   .bars span:nth-child(2){animation-delay:.1s}.bars span:nth-child(3){animation-delay:.2s}
   .bars span:nth-child(4){animation-delay:.3s}.bars span:nth-child(5){animation-delay:.15s}
-  @keyframes bar{0%,100%{height:6px}50%{height:26px}}
-  .hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:4px}
+  @keyframes bar{0%,100%{height:6px}50%{height:24px}}
+  .hint{font-size:13.5px; color:var(--muted); text-align:center; margin-top:16px}
+  .hint b{color:var(--ink); font-weight:600}
 
-  /* Transcript */
-  .transcript{background:var(--bg);border:1px dashed var(--line);border-radius:14px;padding:16px;min-height:56px;font-size:18px;line-height:1.65}
-  .transcript .w{padding:1px 4px;border-radius:6px}
-  .transcript .w.flag{background:var(--wrong-bg);color:var(--wrong);font-weight:600}
-  .transcript .w.done{background:var(--ok-bg);color:var(--ok);font-weight:600}
-  .transcript .ph{color:var(--muted)}
+  /* ---------- Transcript (teacher-correction style) ---------- */
+  .transcript{
+    background:var(--mist); border:1px solid var(--line); border-radius:10px;
+    padding:18px 16px; min-height:56px; font-size:18px; line-height:1.85;
+  }
+  .transcript .w{padding:0 1px}
+  .transcript .w.flag{
+    color:var(--err); font-weight:600;
+    text-decoration:underline wavy var(--err) 2px; text-underline-offset:5px;
+  }
+  .transcript .w.done{
+    color:var(--green-deep); font-weight:600;
+    text-decoration:underline solid var(--green) 2px; text-underline-offset:5px;
+  }
+  .transcript .ph{color:var(--muted); font-size:15px}
 
-  /* Word cards to fix */
-  .fixlist{display:flex;flex-direction:column;gap:12px;margin-top:4px}
-  .fw{border:1.5px solid var(--wrong-bg);background:#fff;border-left:5px solid var(--wrong);border-radius:16px;padding:16px;transition:.3s}
-  .fw.done{border-color:var(--ok-bg);border-left-color:var(--green);background:var(--ok-bg)}
-  .fw-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .fw-word{font-family:"Poppins";font-weight:700;font-size:22px;color:var(--wrong);display:flex;align-items:center;gap:9px}
+  /* ---------- Words to practise ---------- */
+  .fixhead{
+    margin-top:26px; padding-top:20px; border-top:1px solid var(--line);
+    font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--navy); display:flex; align-items:center; gap:8px;
+  }
+  .fixhead .lucide{width:16px;height:16px}
+  .fixlist{display:flex; flex-direction:column; gap:12px; margin-top:14px}
+  .fw{
+    border:1px solid var(--line); border-left:4px solid var(--err);
+    background:var(--paper); border-radius:10px; padding:16px 16px 14px;
+    transition:border-color .3s, background .3s;
+  }
+  .fw.done{border-left-color:var(--green); background:var(--green-tint); border-color:#D9EDC6}
+  .fw-head{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .fw-word{
+    font-family:"Schibsted Grotesk"; font-weight:700; font-size:21px; letter-spacing:-.01em;
+    color:var(--ink); display:flex; align-items:center; gap:9px;
+  }
   .fw.done .fw-word{color:var(--green-deep)}
-  .fw-check{width:26px;height:26px;border-radius:50%;background:var(--green);display:none;place-items:center}
+  .fw-check{
+    width:24px; height:24px; border-radius:50%; background:var(--green);
+    display:none; place-items:center; color:#fff;
+  }
   .fw.done .fw-check{display:grid}
-  .fw-check svg{width:15px;height:15px}
-  .fw-tip{font-size:13px;color:#7a2f31;margin-top:7px}
+  .fw-check .lucide{width:14px;height:14px;stroke-width:3}
+  .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px}
   .fw.done .fw-tip{color:var(--green-deep)}
-  .fw-actions{display:flex;gap:9px;margin-top:14px}
-  .act{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;border:0;font-family:"Poppins";
-    font-weight:600;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;transition:.15s}
-  .act svg{width:18px;height:18px}
-  .act.hear{background:var(--sky);color:var(--blue)}
-  .act.hear:active{background:#dce9fb}
-  .act.say{background:var(--green);color:#fff}
-  .act.say:active{filter:brightness(.95)}
-  .act.say.rec{background:var(--wrong)}
+  .fw-actions{display:flex; gap:9px; margin-top:14px}
+  .act{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    border:0; font-weight:600; font-size:14px; padding:11px; border-radius:9px;
+    cursor:pointer; transition:background .15s, filter .15s;
+  }
+  .act:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
+  .act.hear{background:var(--navy-tint); color:var(--navy)}
+  .act.hear:hover{background:#DFE7F8}
+  .act.say{background:var(--green); color:#fff}
+  .act.say:hover{filter:brightness(.95)}
+  .act.say.rec{background:var(--err)}
   .fw.done .fw-actions{display:none}
-  .fw-status{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;min-height:16px;font-weight:500}
-  .fw-status.bad{color:var(--wrong)}
+  .fw-status{font-size:12.5px; color:var(--muted); text-align:center; margin-top:10px; min-height:16px; font-weight:500}
+  .fw-status.bad{color:var(--err)}
 
-  .clean{text-align:center;padding:18px;background:var(--ok-bg);border-radius:16px;color:var(--ok);font-weight:600;font-size:15px;font-family:"Poppins"}
-  .allgreen{text-align:center;padding:16px;background:var(--green-soft);border-radius:16px;color:var(--green-deep);font-weight:700;font-family:"Poppins";margin-top:14px;font-size:15px}
+  .clean, .allgreen{
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    text-align:center; padding:16px; border-radius:10px;
+    font-weight:600; font-size:14.5px;
+  }
+  .clean{background:var(--green-tint); color:var(--green-deep); margin-top:18px}
+  .allgreen{background:var(--navy); color:#fff; margin-top:14px}
+  .allgreen .lucide{color:var(--green)}
 
-  .btn-row{margin-top:16px}
-  .btn{width:100%;border:0;font-family:"Poppins";font-weight:600;font-size:15px;padding:14px;border-radius:14px;cursor:pointer;background:#fff;border:1.5px solid var(--line);color:var(--ink)}
-  .btn:active{background:var(--bg)}
+  .btn-row{margin-top:18px}
+  .btn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+    border:1px solid var(--line); font-weight:600; font-size:15px;
+    padding:13px; border-radius:10px; cursor:pointer;
+    background:var(--paper); color:var(--ink); transition:background .15s;
+  }
+  .btn:hover{background:var(--mist)}
 
-  .notice{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;font-size:13.5px;color:var(--muted);margin-top:16px;display:none}
-  .notice.show{display:block}.notice b{color:var(--ink)}
-  footer{text-align:center;margin-top:26px;font-size:12px;color:var(--muted)}
-  footer .sep{opacity:.4;margin:0 6px}
+  .notice{
+    background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--navy);
+    border-radius:10px; padding:16px; font-size:13.5px; color:var(--muted);
+    margin-top:18px; display:none;
+  }
+  .notice.show{display:block}
+  .notice b{color:var(--ink)}
+
+  /* ---------- Footer ---------- */
+  footer{margin-top:52px; background:var(--navy-deep); color:#B9C6EA}
+  footer .inner{max-width:920px; margin:0 auto; padding:30px 20px 26px}
+  footer .f-brand{display:flex; align-items:center; gap:10px; margin-bottom:12px}
+  footer .f-brand img{width:32px; height:32px; object-fit:contain; background:#fff; border-radius:7px; padding:3px}
+  footer .f-brand strong{color:#fff; font-family:"Schibsted Grotesk"; font-weight:700; font-size:14px}
+  footer p{font-size:12.5px; line-height:1.7}
+  footer .cricos{margin-top:10px; font-size:11.5px; opacity:.75}
+
+  @media (max-width:480px){
+    .topstrip .inner span:last-child{display:none}
+    .nav .tag span{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mic-btn.rec .ring, .bars.on span{animation:none}
+  }
   .hide{display:none !important}
 </style>
 </head>
 <body>
-<div class="hero">
-  <div class="sun"></div>
-  <div class="brandbar">
-    <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" fill="#fff"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
-    <span>Sound<b>Check</b></span>
+
+<div class="topstrip">
+  <div class="inner">
+    <span>Level 1, 17 Orchid Avenue, Surfers Paradise QLD</span>
+    <span>+61 (0)7 5527 5306</span>
   </div>
-  <h1>Hear how your <em>English</em> really sounds</h1>
-  <p>Speak, then fix the tricky words one by one until they all turn green.</p>
-  <svg class="wave" viewBox="0 0 580 40" preserveAspectRatio="none"><path d="M0 22 C 120 4, 200 40, 300 24 C 400 8, 480 34, 580 18 L 580 40 L 0 40 Z" fill="#F3F7FC"/></svg>
 </div>
 
-<div class="wrap">
-  <div class="card">
+<nav class="nav">
+  <div class="inner">
+    <a class="brand" href="#">
+      <img src="https://pacificenglishschool.com/wp-content/uploads/2023/11/cropped-PES-Logo-Medium-270x270.png"
+           alt="Pacific English Study logo" onerror="this.style.display='none'" />
+      <span class="name">
+        <strong>Pacific English Study</strong>
+        <small>Gold Coast · Australia</small>
+      </span>
+    </a>
+    <div class="tag"><i data-lucide="graduation-cap"></i><span>Student Hub</span></div>
+  </div>
+</nav>
+
+<header class="head">
+  <div class="inner">
+    <div class="eyebrow">Pronunciation Lab</div>
+    <h1>Hear how your English <em>really sounds</em></h1>
+    <p>Record yourself speaking, and we'll flag the words that most often reveal an accent. Practise each one until your whole sentence turns green.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card">
     <div class="mic-zone">
-      <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Record">
+      <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Start recording">
         <span class="ring"></span>
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" fill="currentColor"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <i data-lucide="mic"></i>
       </button>
       <div class="bars" id="bars"><span></span><span></span><span></span><span></span><span></span></div>
-      <div class="mic-label" id="label">Tap and speak in English</div>
+      <div class="mic-label" id="label">Tap the microphone and speak in English</div>
     </div>
-    <p class="hint">Try: “I think this is a really nice place to study.”</p>
-  </div>
+    <p class="hint">Try saying: <b>"I think this is a really nice place to study."</b></p>
+  </section>
 
-  <div class="card hide" id="resultCard">
-    <div class="eyebrow">What I heard</div>
+  <section class="card hide" id="resultCard">
+    <h2><i data-lucide="audio-lines"></i>What we heard</h2>
     <div class="transcript" id="transcript"></div>
     <div id="fixWrap"></div>
-    <div class="btn-row"><button class="btn" onclick="location.reload()">🎤 Record again</button></div>
-  </div>
+    <div class="btn-row">
+      <button class="btn" onclick="location.reload()"><i data-lucide="rotate-ccw"></i>Record again</button>
+    </div>
+  </section>
 
   <div class="notice" id="notice">
-    <b>This browser can’t hear you.</b> Open the page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone), and allow microphone access when asked.
+    <b>This browser can't hear you.</b> Open this page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone), and allow microphone access when asked.
   </div>
+</main>
 
-  <footer>SoundCheck <span class="sep">·</span> practise anywhere <span class="sep">·</span> works in Chrome &amp; Safari</footer>
-</div>
+<footer>
+  <div class="inner">
+    <div class="f-brand">
+      <img src="https://pacificenglishschool.com/wp-content/uploads/2023/11/cropped-PES-Logo-Medium-270x270.png"
+           alt="" onerror="this.style.display='none'" />
+      <strong>Pacific English Study</strong>
+    </div>
+    <p>Level 1, 17 Orchid Avenue, Surfers Paradise, Gold Coast, Australia<br />
+    Pronunciation Lab is a free practice tool for our students. Works in Chrome and Safari.</p>
+    <p class="cricos">Registered with the Australian Government · CRICOS 03215E</p>
+  </div>
+</footer>
 
 <script>
 /* Words that commonly reveal accent + how to fix them (universal) */
 const TRICKY = {
-  "think":"‘th’ — tongue between the teeth, not 't' or 's'.",
-  "the":"voiced ‘th’ (/ð/) — a soft buzz, not 'de' or 'ze'.",
-  "this":"voiced ‘th’ (/ð/).","that":"voiced ‘th’ (/ð/).","these":"voiced ‘th’ (/ð/).","those":"voiced ‘th’ (/ð/).",
-  "three":"‘thr’ — /θr/, not 'tr' or 'fr'.","through":"‘thr’ + a long vowel.","thing":"‘th’ start, ‘-ng’ end.",
-  "thought":"‘th’ + silent ‘gh’.","thousand":"starts with the ‘th’ sound.","both":"‘th’ at the end.",
+  "think":"'th' — tongue between the teeth, not 't' or 's'.",
+  "the":"voiced 'th' (/ð/) — a soft buzz, not 'de' or 'ze'.",
+  "this":"voiced 'th' (/ð/).","that":"voiced 'th' (/ð/).","these":"voiced 'th' (/ð/).","those":"voiced 'th' (/ð/).",
+  "three":"'thr' — /θr/, not 'tr' or 'fr'.","through":"'thr' + a long vowel.","thing":"'th' start, '-ng' end.",
+  "thought":"'th' + silent 'gh'.","thousand":"starts with the 'th' sound.","both":"'th' at the end.",
   "really":"clear /r/ at the start, /l/ in the middle.","world":"/r/ then /l/ back to back — go slowly.",
   "girl":"/r/ + /l/ — a tricky pair.","early":"/r/ + /l/.",
   "very":"/v/ — top teeth on the bottom lip.","village":"/v/, not /w/ or /b/.","voice":"/v/ start.",
   "we":"/w/ — round lips, no teeth.","west":"/w/ start.","water":"/w/ start.",
   "ship":"short /ɪ/ (different from 'sheep').","sheep":"long /iː/ — hold it.",
   "live":"short /ɪ/ (verb).","leave":"long /iː/.","beach":"long /iː/.",
-  "worked":"‘-ed’ = /t/: say 'workt'.","walked":"‘-ed’ = /t/: 'walkt'.","asked":"cluster /skt/ — one push.",
-  "clothes":"tough cluster — often just /kloʊz/.","months":"end cluster /nθs/.",
+  "worked":"'-ed' = /t/: say 'workt'.","walked":"'-ed' = /t/: 'walkt'.","asked":"cluster /skt/ — one push.",
+  "months":"end cluster /nθs/.",
   "comfortable":"often 3 beats: /ˈkʌmftəbəl/.","vegetable":"3 beats: /ˈvedʒtəbəl/.",
-  "wednesday":"silent ‘d’: /ˈwenzdeɪ/.","february":"often /ˈfebjuəri/.",
-  "listen":"silent ‘t’.","island":"silent ‘s’.","knight":"silent ‘k’.","knife":"silent ‘k’.",
-  "honest":"silent ‘h’.","hour":"silent ‘h’.","could":"silent ‘l’.","would":"silent ‘l’.",
+  "wednesday":"silent 'd': /ˈwenzdeɪ/.","february":"often /ˈfebjuəri/.",
+  "listen":"silent 't'.","island":"silent 's'.","knight":"silent 'k'.","knife":"silent 'k'.",
+  "honest":"silent 'h'.","hour":"silent 'h'.","could":"silent 'l'.","would":"silent 'l'.",
   "focus":"stress the first beat: FO-cus.","develop":"stress the middle: de-VEL-op.",
-  "people":"/ˈpiːpəl/ — long ‘ee’ then a soft ‘l’.","beautiful":"3 beats: /ˈbjuːtɪfəl/.",
+  "people":"/ˈpiːpəl/ — long 'ee' then a soft 'l'.","beautiful":"3 beats: /ˈbjuːtɪfəl/.",
   "clothes":"often just /kloʊz/.","favourite":"often 2 beats: /ˈfeɪvrɪt/."
 };
 
@@ -180,6 +329,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if(!SR){ document.getElementById('notice').classList.add('show'); }
 function makeRec(){ const r=new SR(); r.lang='en-US'; r.interimResults=true; r.maxAlternatives=1; r.continuous=false; return r; }
 const norm = s => s.toLowerCase().replace(/[^a-z\s']/g,'').replace(/\s+/g,' ').trim();
+function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 
 /* ----- main recording ----- */
 function toggleRec(){
@@ -194,9 +344,9 @@ function toggleRec(){
     for(let i=e.resultIndex;i<e.results.length;i++){ const t=e.results[i][0].transcript;
       if(e.results[i].isFinal) finalText+=t+' '; else interim+=t; }
     liveTranscript(finalText+' '+interim); };
-  rec.onerror=(e)=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed') label.textContent='I need microphone permission 🎤'; };
+  rec.onerror=(e)=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed') label.textContent='We need microphone permission to hear you'; };
   rec.onend=()=>{ recognizing=false; mic.classList.remove('rec'); bars.classList.remove('on'); label.classList.remove('live');
-    label.textContent='Tap and speak in English'; buildResult(norm(finalText)); };
+    label.textContent='Tap the microphone and speak in English'; buildResult(norm(finalText)); };
   document.getElementById('resultCard').classList.add('hide');
   rec.start();
 }
@@ -212,7 +362,7 @@ function liveTranscript(text){
 function buildResult(heard){
   const card=document.getElementById('resultCard'); card.classList.remove('hide');
   const box=document.getElementById('transcript'), wrap=document.getElementById('fixWrap');
-  if(!heard){ box.innerHTML='<span class="ph">Didn’t catch that. Try speaking a bit closer to the mic.</span>'; wrap.innerHTML=''; return; }
+  if(!heard){ box.innerHTML='<span class="ph">We didn\'t catch that. Try speaking a bit closer to the microphone.</span>'; wrap.innerHTML=''; return; }
   const words=heard.split(' ').filter(Boolean); const found=[];
   box.innerHTML=words.map((w,i)=>{ const c=w.replace(/[^a-z']/g,'');
     if(TRICKY[c]&&!found.some(f=>f.word===c)){ found.push({word:c, id:'w'+found.length}); }
@@ -220,29 +370,31 @@ function buildResult(heard){
     return (TRICKY[c])?`<span class="w flag" id="t_${found[idx].id}">${w}</span>`:`<span class="w">${w}</span>`;
   }).join(' ');
 
-  if(!found.length){ wrap.innerHTML='<div class="clean" style="margin-top:16px">✅ No classic tricky sounds spotted. Nicely done!</div>'; return; }
+  if(!found.length){
+    wrap.innerHTML='<div class="clean"><i data-lucide="badge-check"></i>No classic tricky sounds spotted. Nicely done!</div>';
+    refreshIcons(); return;
+  }
 
-  wrap.innerHTML = '<div class="eyebrow" style="margin-top:22px">Words to polish</div><div class="fixlist">' +
+  wrap.innerHTML = '<div class="fixhead"><i data-lucide="pencil-line"></i>Words to practise</div><div class="fixlist">' +
     found.map(f=>`
       <div class="fw" id="${f.id}">
         <div class="fw-head">
           <div class="fw-word">${f.word}
-            <span class="fw-check"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="fw-check"><i data-lucide="check"></i></span>
           </div>
         </div>
         <div class="fw-tip">${TRICKY[f.word]}</div>
         <div class="fw-actions">
           <button class="act hear" onclick="hearWord('${f.word}')">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor"/><path d="M16 9a3 3 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            Hear it
+            <i data-lucide="volume-2"></i>Hear it
           </button>
           <button class="act say" id="say_${f.id}" onclick="sayWord('${f.word}','${f.id}')">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" fill="currentColor"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            Say it
+            <i data-lucide="mic"></i>Say it
           </button>
         </div>
         <div class="fw-status" id="st_${f.id}"></div>
       </div>`).join('') + '</div>';
+  refreshIcons();
 }
 
 /* ----- hear correct pronunciation ----- */
@@ -263,7 +415,7 @@ function sayWord(word,id){
   const btn=document.getElementById('say_'+id), st=document.getElementById('st_'+id);
   wordRec=makeRec(); activeCard=id;
   let got='';
-  wordRec.onstart=()=>{ btn.classList.add('rec'); st.textContent='Listening… say “'+word+'”'; st.classList.remove('bad'); };
+  wordRec.onstart=()=>{ btn.classList.add('rec'); st.textContent='Listening… say "'+word+'"'; st.classList.remove('bad'); };
   wordRec.onresult=(e)=>{ for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) got+=e.results[i][0].transcript+' '; } };
   wordRec.onerror=()=>{};
   wordRec.onend=()=>{
@@ -276,7 +428,7 @@ function sayWord(word,id){
       const tSpan=document.getElementById('t_'+id); if(tSpan){ tSpan.classList.remove('flag'); tSpan.classList.add('done'); }
       checkAllDone();
     } else {
-      st.textContent = said? 'Heard “'+said.trim()+'” — try once more' : 'Didn’t catch it — try again';
+      st.textContent = said? 'We heard "'+said.trim()+'" — try once more' : 'We didn\'t catch it — try again';
       st.classList.add('bad');
     }
   };
@@ -290,12 +442,14 @@ function checkAllDone(){
     const wrap=document.getElementById('fixWrap');
     if(!document.getElementById('allgreen')){
       const d=document.createElement('div'); d.className='allgreen'; d.id='allgreen';
-      d.textContent='🌊 All green! Your pronunciation is on point.';
+      d.innerHTML='<i data-lucide="award"></i>All green! Your pronunciation is on point.';
       wrap.appendChild(d);
+      refreshIcons();
     }
   }
 }
 if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged=()=>{}; }
+refreshIcons();
 </script>
 </body>
 </html>
