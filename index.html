@@ -618,7 +618,7 @@ function buildResult(heard){
     const canon=lookupTricky(c);
     if(canon && !found.some(f=>f.word===canon)){ found.push({word:canon, id:'w'+found.length}); }
     const idx = canon ? found.findIndex(f=>f.word===canon) : -1;
-    return canon ? `<span class="w flag" id="t_${found[idx].id}">${escapeHtml(w)}</span>`
+    return canon ? `<span class="w flag" data-fw="${found[idx].id}">${escapeHtml(w)}</span>`
                  : `<span class="w">${escapeHtml(w)}</span>`;
   }).join(' ');
 
@@ -724,7 +724,7 @@ function sayWord(word,id){
       const cardEl=document.getElementById(id);
       cardEl.classList.add('done'); st.textContent='';
       anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
-      const tSpan=document.getElementById('t_'+id); if(tSpan){ tSpan.classList.remove('flag'); tSpan.classList.add('done'); }
+      document.querySelectorAll('[data-fw="'+id+'"]').forEach(sp=>{ sp.classList.remove('flag'); sp.classList.add('done'); });
       announce(word+' pronounced correctly.');
       checkAllDone();
     } else {
