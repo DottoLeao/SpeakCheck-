@@ -36,6 +36,9 @@ The interface is themed after [Pacific English Study](https://pacificenglishscho
 - **Three feedback axes** — pronunciation (ASR confidence signal), grammar, and vocabulary (LLM), each with its own card style
 - **Natural version** — the corrected, natural phrasing of what you said, shown alongside the transcript
 - **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording verified server-side (minimal pairs like *three*/*tree* are naturally protected: the recognizer transcribes what you actually said)
+- **Word-by-word report** — every spoken word gets a confidence score chip (green/amber/red); note the signal is per-word, not per-phoneme — a swallowed ending shows up as low confidence on the whole word, and the coaching tip points at which part likely failed
+- **"My voice" playback** — your recording is kept in the browser (never re-uploaded) and sliced by the recognizer's word timings, so you can replay exactly how *you* said a word and compare it with the native TTS
+- **Progressive loader** — staged progress (upload → transcribe → coach) with skeleton cards while the analysis runs
 - **Teacher-style corrections** — flagged words get a red wavy underline (plus a ⚠/✓ marker) that turns green when fixed
 - **Light & dark mode**, **screen-reader accessible**, **micro-interactions** with `prefers-reduced-motion` support
 - **Clear error feedback** — distinct messages for denied permission, silence, short/long recordings, network and server errors

@@ -73,7 +73,7 @@ Produce an analysis with:
 1. "transcript": echo EVERY input word, in the SAME order, spelled EXACTLY as given. Set status "flag" and a card_id for words with an issue; otherwise status "ok" and card_id "". If the same issue covers several words (e.g. a grammar issue spanning "go to beach"), flag each word with the SAME card_id.
 
 2. "cards": one per distinct issue, at most 5, most important first.
-   - type "pronunciation": ONLY for words listed as low-confidence suspects. practice=true. "word" is the single word to practise.
+   - type "pronunciation": ONLY for words listed as low-confidence suspects. practice=true. "word" is the single word to practise. If the word ends in a sound learners often swallow (-ed, -s/-es, -th, -ng, consonant clusters), name the ending explicitly in the tip (e.g. "the '-ed' ending — say 'workt'", "finish the '-ng': /ɪŋ/").
    - type "grammar": wrong tense, missing article, agreement, word order. practice=false. "word" is a short label of the issue (e.g. "past tense", "article 'the'").
    - type "vocabulary": an unnatural word choice where a clearly better word exists. practice=false. "word" is the better word.
    - "tip": ONE short, encouraging, plain-language sentence. For pronunciation, describe the mouth/sound (e.g. "'th' — tongue between the teeth, not 't' or 's'."). For grammar/vocabulary, say what to use instead and why, briefly.
@@ -110,11 +110,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const alt = result?.results?.channels?.[0]?.alternatives?.[0];
-    const words = (alt?.words ?? []).map((w) => ({
+    // Full per-word data (confidence + timings) — timings power the client's
+    // "play your own voice" slices and the word-by-word report.
+    const dgWords = (alt?.words ?? []).map((w) => ({
       word: w.word.toLowerCase(),
       confidence: Math.round(w.confidence * 100) / 100,
+      start: Math.round(w.start * 100) / 100,
+      end: Math.round(w.end * 100) / 100,
     }));
-    if (!words.length) return res.status(422).json({ error: "no-speech" });
+    if (!dgWords.length) return res.status(422).json({ error: "no-speech" });
+    // The LLM only needs word + confidence — keep timings out of the prompt.
+    const words = dgWords.map(({ word, confidence }) => ({ word, confidence }));
 
     /* ---------- 2. LLM: Claude with structured output ---------- */
     const anthropic = new Anthropic(); // ANTHROPIC_API_KEY from env
@@ -145,7 +151,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     res.setHeader("Cache-Control", "no-store");
-    return res.status(200).json(analysis);
+    // Attach the raw recognizer words (confidence + timings) alongside the LLM analysis.
+    return res.status(200).json({ ...analysis, words: dgWords });
   } catch (err) {
     console.error("analyze:", err);
     return res.status(500).json({ error: "server-error" });

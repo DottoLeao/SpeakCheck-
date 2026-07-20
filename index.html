@@ -19,6 +19,7 @@
     --ink:#182448; --muted:#5F6B87; --line:#E3E9F4;
     --paper:#FFFFFF; --mist:#F6F8FC;
     --err:#C9403A; --err-tint:#FBEFEE;
+    --warn-deep:#8A6A00; --warn-tint:#FBF3DC; --warn-border:#EBDCA8;
     --strip-fg:#C6D2F0; --tag-border:#D5DEF4;
     --hear-hover:#DFE7F8; --done-border:#D9EDC6;
     --mic-bg:#3B53A4; --mic-hover:#2C3F82; --allgreen-bg:#3B53A4;
@@ -32,6 +33,7 @@
       --ink:#E9EDF8; --muted:#A3AECB; --line:#2C3654;
       --paper:#1A2138; --mist:#111830;
       --err:#E8746E; --err-tint:#3A2120;
+      --warn-deep:#E2BE62; --warn-tint:#33290F; --warn-border:#57451A;
       --strip-fg:#A9B6DC; --tag-border:#38466F;
       --hear-hover:#2C3A63; --done-border:#2F4A1C;
       --allgreen-bg:#2C3F82;
@@ -208,6 +210,66 @@
     font-size:14px; color:var(--green-deep); line-height:1.55;
   }
   .corrected .lucide{width:16px; height:16px; flex:none; margin-top:2px}
+
+  /* ---------- progressive analyzing loader ---------- */
+  .loader{display:flex; flex-direction:column; align-items:center; gap:12px; padding:8px 0 4px}
+  .loader-eq{display:flex; align-items:flex-end; gap:4px; height:24px}
+  .loader-eq span{width:4px; height:6px; background:var(--navy); border-radius:3px; opacity:.9}
+  .loader-eq.on span{animation:bar .9s ease-in-out infinite}
+  .loader-eq span:nth-child(2){animation-delay:.12s}.loader-eq span:nth-child(3){animation-delay:.24s}
+  .loader-eq span:nth-child(4){animation-delay:.36s}.loader-eq span:nth-child(5){animation-delay:.18s}
+  .loader-stage{font-size:13.5px; font-weight:600; color:var(--muted); min-height:18px; text-align:center}
+  .loader-track{width:100%; max-width:340px; height:6px; border-radius:999px; background:var(--line); overflow:hidden}
+  .loader-fill{
+    height:100%; width:0%; border-radius:999px; position:relative; overflow:hidden;
+    background:linear-gradient(90deg, var(--navy), var(--green));
+    transition:width .6s cubic-bezier(.22,1,.36,1);
+  }
+  .loader-fill::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+    animation:shimmer 1.2s linear infinite;
+  }
+  @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .loader-pct{font-size:11.5px; font-weight:700; color:var(--navy); letter-spacing:.04em}
+  .skel{border:1px solid var(--line); border-left:4px solid var(--line); border-radius:10px; padding:16px; margin-top:12px}
+  .skel .sk-line{height:12px; border-radius:6px; background:var(--mist); position:relative; overflow:hidden}
+  .skel .sk-line+.sk-line{margin-top:10px}
+  .skel .sk-line.w60{width:60%}
+  .skel .sk-line::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(127,127,127,.14), transparent);
+    animation:shimmer 1.2s linear infinite;
+  }
+
+  /* ---------- word-by-word report chips ---------- */
+  .wchips{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+  .wchip{
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius:999px; padding:7px 12px; font-size:13px; font-weight:600;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+    cursor:pointer; transition:filter .15s; font-family:inherit;
+  }
+  .wchip .lucide{width:12px; height:12px}
+  .wchip b{font-weight:700; font-size:11px; letter-spacing:.02em; opacity:.85}
+  .wchip:hover{filter:brightness(.96)}
+  .wchip:disabled{cursor:default}
+  .wchip:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
+  .wchip.good{background:var(--green-tint); border-color:var(--done-border); color:var(--green-deep)}
+  .wchip.mid{background:var(--warn-tint); border-color:var(--warn-border); color:var(--warn-deep)}
+  .wchip.low{background:var(--err-tint); border-color:var(--err); color:var(--err)}
+
+  /* ---------- "My voice" + full-recording playback ---------- */
+  .act.mine{background:var(--mist); color:var(--ink); border:1px solid var(--line)}
+  .act.mine:hover{background:var(--line)}
+  .play-all{
+    margin-left:auto; width:28px; height:28px; border-radius:50%; cursor:pointer;
+    border:1px solid var(--line); background:var(--paper); color:var(--navy);
+    display:grid; place-items:center; transition:background .15s;
+  }
+  .play-all .lucide{width:14px; height:14px}
+  .play-all:hover{background:var(--navy-tint)}
+  .play-all:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
   .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px}
   .fw.done .fw-tip{color:var(--green-deep)}
   .fw-actions{display:flex; gap:9px; margin-top:14px}
@@ -266,7 +328,9 @@
     .nav .tag span{display:none}
   }
   @media (prefers-reduced-motion:reduce){
-    .mic-btn.rec .ring, .bars.on span{animation:none}
+    .mic-btn.rec .ring, .bars.on span, .loader-eq.on span,
+    .loader-fill::after, .skel .sk-line::after{animation:none}
+    .loader-fill{transition:none}
   }
   .hide{display:none !important}
   .sr-only{
@@ -320,7 +384,11 @@
   </section>
 
   <section class="card hide" id="resultCard">
-    <h2><i data-lucide="audio-lines"></i>What we heard</h2>
+    <h2><i data-lucide="audio-lines"></i>What we heard
+      <button class="play-all hide" id="playAll" onclick="playMyRecording(this)" aria-label="Play your full recording">
+        <i data-lucide="play"></i>
+      </button>
+    </h2>
     <div class="transcript" id="transcript"></div>
     <div id="fixWrap"></div>
     <div class="btn-row">
@@ -368,6 +436,106 @@ function pickMime(){
 function stopTracks(){ if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; } }
 async function openMic(){
   return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}});
+}
+
+/* ----- playback of the user's own recording (Web Audio → sample-accurate word slices) -----
+   MediaRecorder blobs have no seek index, so <audio>.currentTime is unreliable;
+   decoding to an AudioBuffer lets us play exact word slices from Deepgram timings. */
+let lastAudio=null, audioCtx=null, audioBuf=null, decodePromise=null, playingSrc=null;
+function keepRecording(blob){ stopPlayback(); lastAudio=blob; audioBuf=null; decodePromise=null; }
+function dropRecording(){ stopPlayback(); lastAudio=null; audioBuf=null; decodePromise=null; }
+function stopPlayback(){ if(playingSrc){ try{ playingSrc.stop(); }catch(_){} playingSrc=null; } }
+async function getAudioBuffer(){
+  if(audioBuf) return audioBuf;
+  if(!lastAudio) return null;
+  if(!decodePromise){
+    decodePromise=(async()=>{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return null;
+      if(!audioCtx) audioCtx=new AC();
+      if(audioCtx.state==='suspended'){ try{ await audioCtx.resume(); }catch(_){} }
+      audioBuf=await audioCtx.decodeAudioData(await lastAudio.arrayBuffer());
+      return audioBuf;
+    })().catch(()=>{ decodePromise=null; return null; });
+  }
+  return decodePromise;
+}
+async function playSlice(start, end, btn){
+  const buf=await getAudioBuffer();
+  if(!buf) return;
+  stopPlayback();
+  const src=audioCtx.createBufferSource();
+  src.buffer=buf; src.connect(audioCtx.destination);
+  const s=Math.max(0, (start||0)-0.12);                       // 120ms padding each side
+  const d=(end==null)? buf.duration-s : Math.max(0.15, Math.min(buf.duration-s, (end-start)+0.24));
+  src.onended=()=>{ if(playingSrc===src) playingSrc=null; };
+  playingSrc=src;
+  src.start(0, s, d);
+  if(btn) anim(btn.querySelector('.lucide')||btn,{transform:['scale(1)','scale(1.25)','scale(1)']},{duration:.35});
+}
+function playMyRecording(btn){ playSlice(0, null, btn); }
+
+/* ----- progressive analyzing loader (staged — fetch gives no real progress) ----- */
+let loaderTimers=[], pctTimer=null, loaderDone=false;
+const LOADER_STAGES=[
+  {at:0,    to:25, label:'Sending your recording…'},
+  {at:450,  to:60, label:'Transcribing your speech…'},
+  {at:1600, to:88, label:'Getting coaching feedback…'}
+];
+function startPctTicker(){
+  clearInterval(pctTimer);
+  pctTimer=setInterval(()=>{
+    const fill=document.getElementById('loaderFill'), el=document.getElementById('loaderPct');
+    if(!fill || !el){ clearInterval(pctTimer); return; }
+    // read the CSS-animated width so the number always matches the bar exactly
+    const trackW=fill.parentElement.getBoundingClientRect().width || 1;
+    el.textContent=Math.min(100, Math.round(fill.getBoundingClientRect().width/trackW*100))+'%';
+  }, 100);
+}
+function startLoader(){
+  killLoader(); loaderDone=false;
+  document.getElementById('transcript').innerHTML=
+    '<div class="loader" role="status" aria-live="polite" aria-label="Analyzing your recording">'+
+      '<div class="loader-eq on" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>'+
+      '<div class="loader-stage" id="loaderStage">Sending your recording…</div>'+
+      '<div class="loader-track"><div class="loader-fill" id="loaderFill"></div></div>'+
+      '<div class="loader-pct" id="loaderPct" aria-hidden="true">0%</div>'+
+    '</div>';
+  document.getElementById('fixWrap').innerHTML=
+    '<div class="skel" aria-hidden="true"><div class="sk-line w60"></div><div class="sk-line"></div><div class="sk-line"></div></div>'+
+    '<div class="skel" aria-hidden="true"><div class="sk-line w60"></div><div class="sk-line"></div></div>';
+  startPctTicker();
+  LOADER_STAGES.forEach(st=>{
+    loaderTimers.push(setTimeout(()=>{
+      const stageEl=document.getElementById('loaderStage');
+      if(stageEl && stageEl.textContent!==st.label){
+        stageEl.textContent=st.label;
+        anim(stageEl,{opacity:[0,1]},{duration:.3});
+      }
+      const fill=document.getElementById('loaderFill');
+      if(fill) fill.style.width=st.to+'%';
+    }, st.at));
+  });
+  // slow crawl toward 96% while the API is still working
+  loaderTimers.push(setInterval(()=>{
+    const fill=document.getElementById('loaderFill');
+    if(!fill || loaderDone) return;
+    const cur=parseFloat(fill.style.width)||0;
+    if(cur>=60 && cur<96) fill.style.width=(cur+1)+'%';
+  }, 700));
+}
+function finishLoader(cb){
+  loaderDone=true;
+  const fill=document.getElementById('loaderFill');
+  if(fill) fill.style.width='100%';
+  const stageEl=document.getElementById('loaderStage');
+  if(stageEl) stageEl.textContent='Done!';
+  setTimeout(()=>{ killLoader(); cb(); }, REDUCED?0:300);
+}
+function killLoader(){
+  loaderTimers.forEach(id=>{ clearTimeout(id); clearInterval(id); });
+  loaderTimers=[];
+  clearInterval(pctTimer);
 }
 
 /* ----- animation helper (Motion, with graceful degradation) ----- */
@@ -418,6 +586,9 @@ function resetApp(){
   stopTracks();
   if(abortCtl){ abortCtl.abort(); abortCtl=null; }
   clearTimeout(wordTimer);
+  killLoader();
+  dropRecording();
+  document.getElementById('playAll').classList.add('hide');
   if('speechSynthesis' in window) speechSynthesis.cancel();
   recording=false; analyzing=false; activeCard=null; chunks=[];
   const card=document.getElementById('resultCard');
@@ -475,13 +646,13 @@ async function finishMain(){
   if(dur<MIN_MS || blob.size<2000){ showError('too-short'); return; }
   if(blob.size>4*1024*1024){ showError('too-long'); return; }
 
+  keepRecording(blob);                                   // powers "My voice" playback after analysis
   analyzing=true;
   setLabel('Analyzing your English…');
   const card=document.getElementById('resultCard');
   const wasHidden=card.classList.contains('hide');
   card.classList.remove('hide');
-  document.getElementById('transcript').innerHTML='<span class="ph">Analyzing…</span>';
-  document.getElementById('fixWrap').innerHTML='';
+  startLoader();
   if(wasHidden) anim(card,{opacity:[0,1],transform:['translateY(14px)','translateY(0)']},{duration:.45,ease:[.22,1,.36,1]});
 
   abortCtl=new AbortController();
@@ -491,17 +662,17 @@ async function finishMain(){
     clearTimeout(timeout);
     if(!res.ok){
       const err=await res.json().catch(()=>({}));
-      analyzing=false; card.classList.add('hide');
+      analyzing=false; killLoader(); card.classList.add('hide');
       showError(err.error || 'server-error');
       return;
     }
     const data=await res.json();
     analyzing=false;
     setLabel('Tap the microphone and speak in English');
-    renderAnalysis(data);
+    finishLoader(()=>renderAnalysis(data));
   }catch(e){
     clearTimeout(timeout);
-    analyzing=false; card.classList.add('hide');
+    analyzing=false; killLoader(); card.classList.add('hide');
     showError(e && e.name==='AbortError' ? 'server-error' : 'network');
   }finally{ abortCtl=null; }
 }
@@ -522,6 +693,15 @@ function renderAnalysis(data){
       : `<span class="w">${escapeHtml(t.word)}</span>`
   ).join(' ');
 
+  // raw recognizer words (confidence + timings) — power the report chips and voice slices
+  const dg=Array.isArray(data.words)? data.words : [];
+  const canPlay=!!lastAudio && dg.length===words.length;   // slices need 1:1 alignment with the transcript
+  document.getElementById('playAll').classList.toggle('hide', !lastAudio);
+  const cardTiming={};
+  words.forEach((t,i)=>{
+    if(t.status==='flag' && t.card_id && !(t.card_id in cardTiming) && dg[i]) cardTiming[t.card_id]=dg[i];
+  });
+
   let html='';
   if(data.corrected && data.corrected.trim()){
     html += `<div class="corrected"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${escapeHtml(data.corrected)}</div></div>`;
@@ -532,11 +712,16 @@ function renderAnalysis(data){
     html += '<div class="fixhead"><i data-lucide="pencil-line"></i>Things to practise</div><div class="fixlist">' +
       cards.map(c=>{
         const w=escapeHtml(c.word), id=escapeHtml(c.id), type=escapeHtml(c.type);
+        const tm=canPlay? cardTiming[c.id] : null;
+        const mine = tm? `
+          <button class="act mine" data-s="${tm.start}" data-e="${tm.end}" onclick="playSlice(parseFloat(this.dataset.s),parseFloat(this.dataset.e),this)" aria-label="Play your recording of ${w}">
+            <i data-lucide="play"></i>My voice
+          </button>` : '';
         const actions = c.practice ? `
         <div class="fw-actions">
           <button class="act hear" data-w="${w}" onclick="hearWord(this.dataset.w)" aria-label="Hear the word ${w}">
             <i data-lucide="volume-2"></i>Hear it
-          </button>
+          </button>${mine}
           <button class="act say" id="say_${id}" data-w="${w}" data-id="${id}" onclick="sayWord(this.dataset.w,this.dataset.id)" aria-label="Record yourself saying ${w}">
             <i data-lucide="mic"></i>Say it
           </button>
@@ -556,6 +741,18 @@ function renderAnalysis(data){
       </div>`;
       }).join('') + '</div>';
   }
+  if(dg.length){
+    html += '<div class="fixhead"><i data-lucide="list-checks"></i>Word-by-word report</div><div class="wchips">' +
+      dg.map(w=>{
+        const pct=Math.round((w.confidence||0)*100);
+        const cls=pct>=90?'good': pct>=70?'mid':'low';
+        return `<button class="wchip ${cls}" data-s="${w.start}" data-e="${w.end}"${canPlay?'':' disabled'} `+
+          `onclick="playSlice(parseFloat(this.dataset.s),parseFloat(this.dataset.e),this)" `+
+          `aria-label="${escapeHtml(w.word)}, ${pct} percent${canPlay?' — play your recording':''}">`+
+          `<i data-lucide="play" aria-hidden="true"></i>${escapeHtml(w.word)}<b>${pct}%</b></button>`;
+      }).join('') + '</div>';
+  }
+
   if(data.praise && data.praise.trim()){
     html += `<div class="clean"><i data-lucide="badge-check"></i>${escapeHtml(data.praise)}</div>`;
   } else if(!cards.length){
@@ -565,6 +762,7 @@ function renderAnalysis(data){
   refreshIcons();
   anim('.corrected, .clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
   if(cards.length) anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
+  if(dg.length) anim('.wchip',{opacity:[0,1],transform:['translateY(6px)','translateY(0)']},{duration:.3,delay:stagger(0.02)});
   const heard=words.map(t=>t.word).join(' ');
   announce('Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
 }
