@@ -19,8 +19,12 @@
     --ink:#182448; --muted:#5F6B87; --line:#E3E9F4;
     --paper:#FFFFFF; --mist:#F6F8FC;
     --err:#C9403A; --err-tint:#FBEFEE;
-    --warn-deep:#8A6A00; --warn-tint:#FBF3DC; --warn-border:#EBDCA8;
+    --warn:#D9A400; --warn-deep:#8A6A00; --warn-tint:#FBF3DC; --warn-border:#EBDCA8;
     --strip-fg:#C6D2F0; --tag-border:#D5DEF4;
+    --bg-base:#EEF2FB;
+    --mesh-a:rgba(59,83,164,.20); --mesh-b:rgba(102,188,41,.14); --mesh-c:rgba(59,83,164,.12);
+    --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.72);
+    --glass-border:rgba(255,255,255,.65); --blur:18px;
     --hear-hover:#DFE7F8; --done-border:#D9EDC6;
     --mic-bg:#3B53A4; --mic-hover:#2C3F82; --allgreen-bg:#3B53A4;
     --card-shadow:0 1px 2px rgba(24,36,72,.04), 0 12px 32px -24px rgba(24,36,72,.18);
@@ -33,8 +37,12 @@
       --ink:#E9EDF8; --muted:#A3AECB; --line:#2C3654;
       --paper:#1A2138; --mist:#111830;
       --err:#E8746E; --err-tint:#3A2120;
-      --warn-deep:#E2BE62; --warn-tint:#33290F; --warn-border:#57451A;
+      --warn:#E2BE62; --warn-deep:#E2BE62; --warn-tint:#33290F; --warn-border:#57451A;
       --strip-fg:#A9B6DC; --tag-border:#38466F;
+      --bg-base:#0C1226;
+      --mesh-a:rgba(90,116,214,.28); --mesh-b:rgba(102,188,41,.10); --mesh-c:rgba(59,83,164,.24);
+      --glass:rgba(26,33,56,.52); --glass-strong:rgba(26,33,56,.68);
+      --glass-border:rgba(255,255,255,.09);
       --hear-hover:#2C3A63; --done-border:#2F4A1C;
       --allgreen-bg:#2C3F82;
       --card-shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -24px rgba(0,0,0,.6);
@@ -45,8 +53,17 @@
   html{-webkit-text-size-adjust:100%}
   body{
     font-family:"Instrument Sans",system-ui,sans-serif;
-    background:var(--mist); color:var(--ink);
+    background:var(--bg-base); color:var(--ink);
     line-height:1.6; min-height:100vh; font-size:16px;
+    overflow-x:clip;
+  }
+  /* glassmorphism backdrop: fixed brand-colored mesh the frosted surfaces blur over */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(620px 420px at 12% 6%,  var(--mesh-a), transparent 62%),
+      radial-gradient(720px 520px at 88% 22%, var(--mesh-b), transparent 62%),
+      radial-gradient(860px 640px at 50% 98%, var(--mesh-c), transparent 66%);
   }
   h1,h2,h3,.display{font-family:"Schibsted Grotesk",system-ui,sans-serif}
   button{font-family:inherit}
@@ -65,7 +82,9 @@
 
   /* ---------- Navbar ---------- */
   .nav{
-    background:var(--paper); border-bottom:1px solid var(--line);
+    background:var(--glass-strong); border-bottom:1px solid var(--glass-border);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
     position:sticky; top:0; z-index:20;
   }
   .nav .inner{
@@ -89,7 +108,7 @@
   .nav .tag .lucide{width:14px;height:14px}
 
   /* ---------- Page header ---------- */
-  .head{background:var(--paper); border-bottom:1px solid var(--line)}
+  .head{background:transparent}
   .head .inner{max-width:920px; margin:0 auto; padding:44px 20px 40px; text-align:left}
   .eyebrow{
     display:inline-flex; align-items:center; gap:8px;
@@ -108,7 +127,9 @@
   .wrap{max-width:640px; margin:0 auto; padding:28px 20px 0}
 
   .card{
-    background:var(--paper); border:1px solid var(--line);
+    background:var(--glass-strong); border:1px solid var(--glass-border);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
     border-radius:var(--radius); padding:28px 24px;
     box-shadow:var(--card-shadow);
   }
@@ -148,8 +169,11 @@
 
   /* ---------- Transcript (teacher-correction style) ---------- */
   .transcript{
-    background:var(--mist); border:1px solid var(--line); border-radius:10px;
+    background:var(--glass); border:1px solid var(--glass-border); border-radius:10px;
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
     padding:18px 16px; min-height:56px; font-size:18px; line-height:1.85;
+    overflow-wrap:anywhere;
   }
   .transcript .w{padding:0 1px}
   .transcript .w.flag{
@@ -174,15 +198,18 @@
   .fixhead .lucide{width:16px;height:16px}
   .fixlist{display:flex; flex-direction:column; gap:12px; margin-top:14px}
   .fw{
-    border:1px solid var(--line); border-left:4px solid var(--err);
-    background:var(--paper); border-radius:10px; padding:16px 16px 14px;
+    border:1px solid var(--glass-border); border-left:4px solid var(--err);
+    background:var(--glass); border-radius:10px; padding:16px 16px 14px;
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
     transition:border-color .3s, background .3s;
   }
   .fw.done{border-left-color:var(--green); background:var(--green-tint); border-color:var(--done-border)}
-  .fw-head{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .fw-head{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px}
   .fw-word{
     font-family:"Schibsted Grotesk"; font-weight:700; font-size:21px; letter-spacing:-.01em;
     color:var(--ink); display:flex; align-items:center; gap:9px;
+    min-width:0; overflow-wrap:anywhere;
   }
   .fw.done .fw-word{color:var(--green-deep)}
   .fw-check{
@@ -208,7 +235,42 @@
     margin-top:14px; padding:12px 14px; border-left:3px solid var(--green);
     background:var(--green-tint); border-radius:8px;
     font-size:14px; color:var(--green-deep); line-height:1.55;
+    overflow-wrap:anywhere;
   }
+  .corrected > div{min-width:0}
+
+  /* ---------- exact-error highlight inside a word ---------- */
+  .focus{
+    font-style:normal; font-weight:800; color:var(--err);
+    background:var(--err-tint); border-radius:3px; padding:0 2px;
+    text-decoration:underline wavy var(--err) 2px; text-underline-offset:4px;
+  }
+  .transcript .w.done .focus, .fw.done .fw-word .focus{
+    color:var(--green-deep); background:var(--green-tint); text-decoration-color:var(--green);
+  }
+
+  /* ---------- session score ring ---------- */
+  .score{display:flex; align-items:center; gap:16px; padding:2px 0 4px}
+  .score-ring{position:relative; width:84px; height:84px; flex:none}
+  .score-ring svg{width:84px; height:84px; transform:rotate(-90deg)}
+  .score-ring circle.bg{fill:none; stroke:var(--line); stroke-width:8}
+  .score-ring circle.val{
+    fill:none; stroke-width:8; stroke-linecap:round;
+    transition:stroke-dashoffset 1s cubic-bezier(.22,1,.36,1);
+  }
+  .score-ring.good circle.val{stroke:var(--green)}
+  .score-ring.mid circle.val{stroke:var(--warn)}
+  .score-ring.low circle.val{stroke:var(--err)}
+  .score-num{
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-family:"Schibsted Grotesk"; font-weight:800; font-size:21px; color:var(--ink);
+  }
+  .score-info b{display:block; font-family:"Schibsted Grotesk"; font-weight:700; font-size:16px; color:var(--ink)}
+  .score-info span{font-size:13px; color:var(--muted)}
+
+  /* ---------- slow-playback button ---------- */
+  .act.slow{flex:0 0 auto; min-width:46px; background:var(--navy-tint); color:var(--navy)}
+  .act.slow:hover{background:var(--hear-hover)}
   .corrected .lucide{width:16px; height:16px; flex:none; margin-top:2px}
 
   /* ---------- progressive analyzing loader ---------- */
@@ -232,7 +294,7 @@
   }
   @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
   .loader-pct{font-size:11.5px; font-weight:700; color:var(--navy); letter-spacing:.04em}
-  .skel{border:1px solid var(--line); border-left:4px solid var(--line); border-radius:10px; padding:16px; margin-top:12px}
+  .skel{border:1px solid var(--glass-border); border-left:4px solid var(--line); background:var(--glass); border-radius:10px; padding:16px; margin-top:12px}
   .skel .sk-line{height:12px; border-radius:6px; background:var(--mist); position:relative; overflow:hidden}
   .skel .sk-line+.sk-line{margin-top:10px}
   .skel .sk-line.w60{width:60%}
@@ -270,11 +332,11 @@
   .play-all .lucide{width:14px; height:14px}
   .play-all:hover{background:var(--navy-tint)}
   .play-all:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
-  .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px}
+  .fw-tip{font-size:13.5px; color:var(--muted); margin-top:6px; overflow-wrap:anywhere}
   .fw.done .fw-tip{color:var(--green-deep)}
-  .fw-actions{display:flex; gap:9px; margin-top:14px}
+  .fw-actions{display:flex; flex-wrap:wrap; gap:9px; margin-top:14px}
   .act{
-    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    flex:1 1 96px; min-width:0; display:flex; align-items:center; justify-content:center; gap:7px;
     border:0; font-weight:600; font-size:14px; padding:11px; border-radius:9px;
     cursor:pointer; transition:background .15s, filter .15s;
   }
@@ -300,14 +362,18 @@
   .btn-row{margin-top:18px}
   .btn{
     width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
-    border:1px solid var(--line); font-weight:600; font-size:15px;
+    border:1px solid var(--glass-border); font-weight:600; font-size:15px;
     padding:13px; border-radius:10px; cursor:pointer;
-    background:var(--paper); color:var(--ink); transition:background .15s;
+    background:var(--glass); color:var(--ink); transition:background .15s;
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
   }
-  .btn:hover{background:var(--mist)}
+  .btn:hover{background:var(--glass-strong)}
 
   .notice{
-    background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--navy);
+    background:var(--glass-strong); border:1px solid var(--glass-border); border-left:4px solid var(--navy);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35);
+    backdrop-filter:blur(var(--blur)) saturate(1.35);
     border-radius:10px; padding:16px; font-size:13.5px; color:var(--muted);
     margin-top:18px; display:none;
   }
@@ -315,7 +381,10 @@
   .notice b{color:var(--ink)}
 
   /* ---------- Footer ---------- */
-  footer{margin-top:52px; background:var(--navy-deep); color:#B9C6EA}
+  footer{
+    margin-top:52px; background:rgba(44,63,130,.82); color:#B9C6EA;
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  }
   footer .inner{max-width:920px; margin:0 auto; padding:30px 20px 26px}
   footer .f-brand{display:flex; align-items:center; gap:10px; margin-bottom:12px}
   footer .f-brand img{width:32px; height:32px; object-fit:contain; background:#fff; border-radius:7px; padding:3px}
@@ -323,14 +392,29 @@
   footer p{font-size:12.5px; line-height:1.7}
   footer .cricos{margin-top:10px; font-size:11.5px; opacity:.75}
 
+  /* solid fallback for browsers without backdrop-filter (old Firefox, some WebViews) */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+    :root{
+      --glass:var(--paper); --glass-strong:var(--paper); --glass-border:var(--line);
+    }
+    footer{background:var(--navy-deep)}
+  }
+
   @media (max-width:480px){
     .topstrip .inner span:last-child{display:none}
     .nav .tag span{display:none}
+    .wrap{padding:24px 14px 0}
+    .card{padding:22px 16px}
+    .act{font-size:13px; padding:10px 8px}
+    .fw-word{font-size:19px}
+    .fw-type{font-size:9px; padding:3px 7px}
+    .transcript{font-size:16.5px; padding:14px 12px}
   }
   @media (prefers-reduced-motion:reduce){
     .mic-btn.rec .ring, .bars.on span, .loader-eq.on span,
     .loader-fill::after, .skel .sk-line::after{animation:none}
     .loader-fill{transition:none}
+    .score-ring circle.val{transition:none}
   }
   .hide{display:none !important}
   .sr-only{
@@ -678,6 +762,23 @@ async function finishMain(){
 }
 
 /* ----- render the analysis JSON (contract from /api/analyze) ----- */
+/* highlight the exact part of a word where the error is (card.focus) */
+function markFocus(word, focus){
+  const w=String(word??''), f=String(focus??'');
+  if(!f) return escapeHtml(w);
+  const i=w.toLowerCase().indexOf(f.toLowerCase());
+  if(i<0) return escapeHtml(w);
+  return escapeHtml(w.slice(0,i))+'<em class="focus">'+escapeHtml(w.slice(i,i+f.length))+'</em>'+escapeHtml(w.slice(i+f.length));
+}
+/* session score: mean word confidence minus a small penalty per grammar/vocab issue
+   (pronunciation problems already pull the confidence average down) */
+function computeScore(dg, cards){
+  if(!dg.length) return null;
+  const avg=dg.reduce((s,x)=>s+(x.confidence||0),0)/dg.length;
+  const pen=cards.filter(c=>c.type!=='pronunciation').length*4;
+  return Math.max(5, Math.min(100, Math.round(avg*100 - pen)));
+}
+
 function renderAnalysis(data){
   const card=document.getElementById('resultCard'); card.classList.remove('hide');
   const box=document.getElementById('transcript'), wrap=document.getElementById('fixWrap');
@@ -687,11 +788,16 @@ function renderAnalysis(data){
     wrap.innerHTML=''; announce("We didn't catch that. Try again."); return;
   }
 
-  box.innerHTML = words.map(t =>
-    (t.status==='flag' && t.card_id)
-      ? `<span class="w flag" data-fw="${escapeHtml(t.card_id)}">${escapeHtml(t.word)}</span>`
-      : `<span class="w">${escapeHtml(t.word)}</span>`
-  ).join(' ');
+  const cards=Array.isArray(data.cards)? data.cards : [];
+  const cardsById={}; cards.forEach(c=>{ cardsById[c.id]=c; });
+
+  box.innerHTML = words.map(t=>{
+    if(t.status==='flag' && t.card_id){
+      const c=cardsById[t.card_id];
+      return `<span class="w flag" data-fw="${escapeHtml(t.card_id)}">${c? markFocus(t.word, c.focus) : escapeHtml(t.word)}</span>`;
+    }
+    return `<span class="w">${escapeHtml(t.word)}</span>`;
+  }).join(' ');
 
   // raw recognizer words (confidence + timings) — power the report chips and voice slices
   const dg=Array.isArray(data.words)? data.words : [];
@@ -703,11 +809,26 @@ function renderAnalysis(data){
   });
 
   let html='';
+  const score=computeScore(dg, cards);
+  if(score!=null){
+    const band=score>=85?'good': score>=60?'mid':'low';
+    const label=score>=85?'Excellent!': score>=60?'Good — keep going':'Keep practising';
+    const C=(2*Math.PI*34).toFixed(1);
+    html += `<div class="score">
+      <div class="score-ring ${band}">
+        <svg viewBox="0 0 84 84" aria-hidden="true">
+          <circle class="bg" cx="42" cy="42" r="34"></circle>
+          <circle class="val" cx="42" cy="42" r="34" stroke-dasharray="${C}" stroke-dashoffset="${C}"></circle>
+        </svg>
+        <div class="score-num" id="scoreNum">0</div>
+      </div>
+      <div class="score-info"><b>Session score</b><span>${label}</span></div>
+    </div>`;
+  }
   if(data.corrected && data.corrected.trim()){
     html += `<div class="corrected"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${escapeHtml(data.corrected)}</div></div>`;
   }
 
-  const cards=Array.isArray(data.cards)? data.cards : [];
   if(cards.length){
     html += '<div class="fixhead"><i data-lucide="pencil-line"></i>Things to practise</div><div class="fixlist">' +
       cards.map(c=>{
@@ -721,6 +842,9 @@ function renderAnalysis(data){
         <div class="fw-actions">
           <button class="act hear" data-w="${w}" onclick="hearWord(this.dataset.w)" aria-label="Hear the word ${w}">
             <i data-lucide="volume-2"></i>Hear it
+          </button>
+          <button class="act slow" data-w="${w}" onclick="hearWord(this.dataset.w, 0.45)" aria-label="Hear ${w} slowly">
+            <i data-lucide="turtle"></i>
           </button>${mine}
           <button class="act say" id="say_${id}" data-w="${w}" data-id="${id}" onclick="sayWord(this.dataset.w,this.dataset.id)" aria-label="Record yourself saying ${w}">
             <i data-lucide="mic"></i>Say it
@@ -730,7 +854,7 @@ function renderAnalysis(data){
         return `
       <div class="fw${c.practice?' fw-practice':''}" id="${id}">
         <div class="fw-head">
-          <div class="fw-word">${w}
+          <div class="fw-word">${markFocus(c.word, c.focus)}
             <span class="fw-check" aria-hidden="true"><i data-lucide="check"></i></span>
             <span class="fw-done-label">Done</span>
           </div>
@@ -763,18 +887,35 @@ function renderAnalysis(data){
   anim('.corrected, .clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
   if(cards.length) anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
   if(dg.length) anim('.wchip',{opacity:[0,1],transform:['translateY(6px)','translateY(0)']},{duration:.3,delay:stagger(0.02)});
+  if(score!=null){
+    const C=2*Math.PI*34;
+    const val=wrap.querySelector('.score-ring circle.val');
+    requestAnimationFrame(()=>{ if(val) val.style.strokeDashoffset=(C*(1-score/100)).toFixed(1); });
+    const numEl=document.getElementById('scoreNum');
+    if(numEl){
+      if(REDUCED){ numEl.textContent=score; }
+      else{
+        let shown=0;
+        const t=setInterval(()=>{
+          shown+=Math.max(1, Math.round((score-shown)*0.12));
+          if(shown>=score){ shown=score; clearInterval(t); }
+          numEl.textContent=shown;
+        }, 40);
+      }
+    }
+  }
   const heard=words.map(t=>t.word).join(' ');
-  announce('Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
+  announce((score!=null? 'Score '+score+' out of 100. ' : '')+'Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
 }
 
 /* ----- hear correct pronunciation ----- */
-function hearWord(word){
+function hearWord(word, rate){
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   try{ speechSynthesis.resume(); }catch(_){}   // iOS Safari sometimes stays paused after cancel
   if(!enVoice) loadVoices();
   const u=new SpeechSynthesisUtterance(word);
-  u.lang='en-US'; u.rate=.8;
+  u.lang='en-US'; u.rate=rate || .8;           // 0.45 = the "hear it slowly" button
   if(enVoice) u.voice=enVoice;                 // else the en-US engine default still speaks
   speechSynthesis.speak(u);
 }

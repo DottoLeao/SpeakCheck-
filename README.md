@@ -33,9 +33,12 @@ The interface is themed after [Pacific English Study](https://pacificenglishscho
 ## Key features
 
 - **Free speech input** — no scripts to read; speak up to a minute and tap the mic to stop
-- **Three feedback axes** — pronunciation (ASR confidence signal), grammar, and vocabulary (LLM), each with its own card style
+- **Session score** — a 0–100 ring per attempt (mean word confidence minus grammar/vocabulary penalties) for instant progress feedback
+- **Three feedback axes** — pronunciation (ASR confidence signal), grammar, and vocabulary (LLM), each with its own card style — one card for *every* issue found, no cap
+- **Exact-error highlight** — the likely-wrong part of each word (the *-ed* of "worked", the *th* of "think") is highlighted inside the word, in the transcript and on the card. Honest caveat: the ASR signal is per-word, so the sub-word location is the LLM's linguistic inference about the low-confidence word — the same approximation established pronunciation apps use in practice
 - **Natural version** — the corrected, natural phrasing of what you said, shown alongside the transcript
-- **Hear / Say loop** — native TTS playback at reduced speed, then per-word re-recording verified server-side (minimal pairs like *three*/*tree* are naturally protected: the recognizer transcribes what you actually said)
+- **Hear / Say loop** — native TTS playback (normal and extra-slow 🐢), then per-word re-recording verified server-side (minimal pairs like *three*/*tree* are naturally protected: the recognizer transcribes what you actually said)
+- **Glassmorphism UI** — frosted-glass surfaces over a brand-colored mesh gradient, light and dark, with a solid fallback for browsers without `backdrop-filter`
 - **Word-by-word report** — every spoken word gets a confidence score chip (green/amber/red); note the signal is per-word, not per-phoneme — a swallowed ending shows up as low confidence on the whole word, and the coaching tip points at which part likely failed
 - **"My voice" playback** — your recording is kept in the browser (never re-uploaded) and sliced by the recognizer's word timings, so you can replay exactly how *you* said a word and compare it with the native TTS
 - **Progressive loader** — staged progress (upload → transcribe → coach) with skeleton cards while the analysis runs
@@ -83,7 +86,11 @@ ANTHROPIC_API_KEY=...  # console.anthropic.com
 
 ## Roadmap
 
-- [ ] Per-session score and streak tracking
+- [x] Per-session score
+- [ ] Suggested next sentence targeting your weak sounds (ELSA-style guided loop)
+- [ ] Practice history + daily streak via localStorage (no account needed)
+- [ ] IPA transcription on pronunciation cards
+- [ ] Spaced repetition of past mistakes; minimal-pair drills
 - [ ] Custom word lists per class level (A1–C1)
 - [ ] Sentence-level stress and rhythm feedback
 

@@ -49,13 +49,14 @@ const ANALYZE_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["id", "word", "type", "tip", "practice"],
+        required: ["id", "word", "type", "tip", "practice", "focus"],
         properties: {
           id: { type: "string" },
           word: { type: "string" },
           type: { type: "string", enum: ["pronunciation", "grammar", "vocabulary"] },
           tip: { type: "string" },
           practice: { type: "boolean" },
+          focus: { type: "string" }, // exact substring of `word` where the error is; "" = whole word
         },
       },
     },
@@ -72,11 +73,12 @@ Produce an analysis with:
 
 1. "transcript": echo EVERY input word, in the SAME order, spelled EXACTLY as given. Set status "flag" and a card_id for words with an issue; otherwise status "ok" and card_id "". If the same issue covers several words (e.g. a grammar issue spanning "go to beach"), flag each word with the SAME card_id.
 
-2. "cards": one per distinct issue, at most 5, most important first.
-   - type "pronunciation": ONLY for words listed as low-confidence suspects. practice=true. "word" is the single word to practise. If the word ends in a sound learners often swallow (-ed, -s/-es, -th, -ng, consonant clusters), name the ending explicitly in the tip (e.g. "the '-ed' ending — say 'workt'", "finish the '-ng': /ɪŋ/").
+2. "cards": one per distinct issue, most important first. Cover EVERY issue you find — do not cap the list.
+   - type "pronunciation": create one card for EVERY word listed as a low-confidence suspect (same word twice = one card). practice=true. "word" is the single word to practise. If the word ends in a sound learners often swallow (-ed, -s/-es, -th, -ng, consonant clusters), name the ending explicitly in the tip (e.g. "the '-ed' ending — say 'workt'", "finish the '-ng': /ɪŋ/").
    - type "grammar": wrong tense, missing article, agreement, word order. practice=false. "word" is a short label of the issue (e.g. "past tense", "article 'the'").
    - type "vocabulary": an unnatural word choice where a clearly better word exists. practice=false. "word" is the better word.
    - "tip": ONE short, encouraging, plain-language sentence. For pronunciation, describe the mouth/sound (e.g. "'th' — tongue between the teeth, not 't' or 's'."). For grammar/vocabulary, say what to use instead and why, briefly.
+   - "focus": for pronunciation cards, the EXACT part of "word" where the error most likely is — the letters of the sound learners of English typically get wrong in that word (the "ed" of "worked", the "th" of "think", the "i" of "ship"). It MUST be a literal substring of "word". Use "" when the whole word is the problem, and always "" for grammar/vocabulary cards.
    - "id": "c1", "c2", ... in order.
 
 3. "corrected": the natural, grammatically correct version of what the speaker meant. If the sentence is already natural, repeat it as-is.
@@ -126,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const anthropic = new Anthropic(); // ANTHROPIC_API_KEY from env
     const msg = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1500,
+      max_tokens: 2500,
       system: [
         {
           type: "text",
@@ -148,6 +150,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Light sanity check: transcript must echo the recognizer's words.
     if (!Array.isArray(analysis.transcript) || analysis.transcript.length === 0) {
       return res.status(502).json({ error: "server-error" });
+    }
+    // `focus` must be a literal substring of `word` — the client highlights it inside the word.
+    if (Array.isArray(analysis.cards)) {
+      for (const c of analysis.cards) {
+        if (typeof c.focus !== "string" || !c.word?.toLowerCase().includes(c.focus.toLowerCase())) {
+          c.focus = "";
+        }
+      }
     }
 
     res.setHeader("Cache-Control", "no-store");
