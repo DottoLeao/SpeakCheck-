@@ -604,9 +604,19 @@ async function openMic(){
    MediaRecorder blobs have no seek index, so <audio>.currentTime is unreliable;
    decoding to an AudioBuffer lets us play exact word slices from Deepgram timings. */
 let lastAudio=null, audioCtx=null, audioBuf=null, decodePromise=null, playingSrc=null;
-function keepRecording(blob){ stopPlayback(); lastAudio=blob; audioBuf=null; decodePromise=null; }
-function dropRecording(){ stopPlayback(); lastAudio=null; audioBuf=null; decodePromise=null; }
-function stopPlayback(){ if(playingSrc){ try{ playingSrc.stop(); }catch(_){} playingSrc=null; } }
+let fbEl=null, fbURL=null, fbTimer=null;   // <audio> fallback (iOS Safari often can't decodeAudioData its own mp4 recordings)
+function resetFallback(){
+  clearTimeout(fbTimer);
+  if(fbEl){ try{ fbEl.pause(); }catch(_){} fbEl=null; }
+  if(fbURL){ try{ URL.revokeObjectURL(fbURL); }catch(_){} fbURL=null; }
+}
+function keepRecording(blob){ stopPlayback(); resetFallback(); lastAudio=blob; audioBuf=null; decodePromise=null; }
+function dropRecording(){ stopPlayback(); resetFallback(); lastAudio=null; audioBuf=null; decodePromise=null; }
+function stopPlayback(){
+  if(playingSrc){ try{ playingSrc.stop(); }catch(_){} playingSrc=null; }
+  clearTimeout(fbTimer);
+  if(fbEl){ try{ fbEl.pause(); }catch(_){} }
+}
 function ensureCtx(){
   // Must run synchronously inside the tap gesture — iOS refuses resume() after an await.
   const AC=window.AudioContext||window.webkitAudioContext;
@@ -627,10 +637,43 @@ async function getAudioBuffer(){
   }
   return decodePromise;
 }
+function fallbackPlay(start, end){
+  // Safari can PLAY its own mp4 recording through a media element even when
+  // decodeAudioData refuses to parse it. Slices are seek-approximate but audible.
+  if(!lastAudio) return false;
+  try{
+    if(!fbEl){
+      fbURL=URL.createObjectURL(lastAudio);
+      fbEl=new Audio(fbURL);
+      fbEl.preload='auto';
+      fbEl.setAttribute('playsinline','');
+    }
+    clearTimeout(fbTimer);
+    fbEl.pause();
+    const s=Math.max(0, (start||0)-0.12);
+    const go=()=>{
+      try{ fbEl.currentTime=s; }catch(_){}
+      const p=fbEl.play();
+      if(p && p.catch) p.catch(()=>{});
+      if(end!=null){
+        const d=Math.max(250, ((end-start)+0.24)*1000);
+        fbTimer=setTimeout(()=>{ try{ fbEl.pause(); }catch(_){} }, d);
+      }
+    };
+    if(fbEl.readyState>=1) go();
+    else fbEl.addEventListener('loadedmetadata', go, {once:true});
+    return true;
+  }catch(_){ return false; }
+}
 async function playSlice(start, end, btn){
   ensureCtx();                       // sync, still inside the user gesture (iOS)
   const buf=await getAudioBuffer();
-  if(!buf) return;
+  if(!buf){                          // decode failed (typical on iOS mp4) → media-element fallback
+    fallbackPlay(start, end);
+    iosSoundHint();
+    if(btn) anim(btn.querySelector('.lucide')||btn,{transform:['scale(1)','scale(1.25)','scale(1)']},{duration:.35});
+    return;
+  }
   stopPlayback();
   const src=audioCtx.createBufferSource();
   src.buffer=buf; src.connect(audioCtx.destination);
