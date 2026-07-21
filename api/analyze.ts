@@ -114,7 +114,7 @@ Judge pronunciation against the learner's "accent" variety — NEVER flag a pron
 
 NEVER create pronunciation cards for one- or two-letter words or basic function words (a, an, in, on, at, to, of, is, it, and, or, the, but) — recognizer confidence on these is noise, not a pronunciation signal.
 
-Write every "tip" and "praise" in the learner's "tip_language". Keep "word", "focus" and "corrected" in English — they are the study material. When tip_language is English, everything is in English.`;
+Write every "tip" and "praise" FULLY in the learner's "tip_language" — grammar terms included (e.g. Portuguese: "a terminação '-ed'", never "the '-ed' ending"). Only IPA symbols (/t/, /θ/) and quoted English example words ('walkt', 'think') stay as-is. Keep "word", "focus" and "corrected" in English — they are the study material. When tip_language is English, everything is in English.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "server-error" });

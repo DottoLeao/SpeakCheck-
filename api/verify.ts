@@ -6,7 +6,10 @@ import { trackVerify } from "../lib/usage";
 export const config = { api: { bodyParser: false } };
 
 const MAX_BYTES = 1 * 1024 * 1024;   // "Say it" recordings are ~4s — 1MB is plenty
-const PASS_CONFIDENCE = 0.6;         // the target word must be heard with at least this confidence
+// Isolated words (no sentence context) get low ASR confidence even when said correctly,
+// so this bar is deliberately lenient — the real protection is the transcription itself
+// (saying "walkt" wrong still transcribes as a different word).
+const PASS_CONFIDENCE = 0.45;
 
 const hits = new Map<string, { n: number; t: number }>();
 function rateLimited(ip: string, max = 30, windowMs = 60_000): boolean {
@@ -58,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const heard = words.map((w) => clean(w.word)).filter(Boolean).join(" ");
 
     let pass: boolean;
+    let heardButUnclear = false;
     if (sentenceTarget.length) {
       // Sentence mode: ≥80% of the target words recognized, in approximate order
       // (sequential matching tolerates recognizer insertions between words).
@@ -71,14 +75,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // Word mode: the exact target word was heard, confidently. Deepgram transcribes what
       // was actually said, so minimal pairs (three/tree, ship/sheep) are naturally protected.
-      pass = words.some((w) => clean(w.word) === target && w.confidence >= PASS_CONFIDENCE);
+      const hit = words.find((w) => clean(w.word) === target);
+      pass = !!hit && hit.confidence >= PASS_CONFIDENCE;
+      // The right word WAS heard, just not clearly — never tell the user
+      // 'we heard "walked", try again' about the very word we asked for.
+      heardButUnclear = !pass && !!hit;
     }
 
     const feedback = pass
       ? ""
-      : heard
-        ? `We heard "${heard}" — try once more`
-        : "We didn't catch it — try again";
+      : heardButUnclear
+        ? "Almost! We heard it, but not clearly — say it once more"
+        : heard
+          ? `We heard "${heard}" — try once more`
+          : "We didn't catch it — try again";
 
     await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass });
 
