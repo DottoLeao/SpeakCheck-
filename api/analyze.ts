@@ -48,7 +48,7 @@ async function readBody(req: VercelRequest): Promise<Buffer> {
 const ANALYZE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["transcript", "cards", "corrected", "praise", "next_sentence"],
+  required: ["transcript", "cards", "corrected", "corrected_translation", "praise", "next_sentence"],
   properties: {
     transcript: {
       type: "array",
@@ -80,6 +80,7 @@ const ANALYZE_SCHEMA = {
       },
     },
     corrected: { type: "string" },
+    corrected_translation: { type: "string" }, // meaning of `corrected` in tip_language; "" when English
     praise: { type: "string" },
     next_sentence: { type: "string" }, // new practice sentence targeting this learner's weaknesses; "" when clean
   },
@@ -101,7 +102,7 @@ Produce an analysis with:
    - "focus": for pronunciation cards, the EXACT part of "word" where the error most likely is — the letters of the sound learners of English typically get wrong in that word (the "ed" of "worked", the "th" of "think", the "i" of "ship"). It MUST be a literal substring of "word". Use "" when the whole word is the problem, and always "" for grammar/vocabulary cards.
    - "id": "c1", "c2", ... in order.
 
-3. "corrected": the natural, grammatically correct version of what the speaker meant. If the sentence is already natural, repeat it as-is.
+3. "corrected": the natural, grammatically correct version of what the speaker meant. If the sentence is already natural, repeat it as-is. Also produce "corrected_translation": the meaning of "corrected" translated into tip_language, natural and concise — so a learner who doesn't read English understands what they are practising. "" when tip_language is English or when "corrected" is "".
 
 4. "praise": one short, specific positive sentence about something the speaker did well ("" only if the input is a single word or gibberish).
 

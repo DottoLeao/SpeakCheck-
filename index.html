@@ -304,6 +304,7 @@
   .mini.say:hover{filter:brightness(.95)}
   .mini.say.rec{background:var(--err)}
   .mini:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
+  .corr-tr{display:block; margin-top:4px; font-size:13px; font-style:italic; opacity:.85}
   .corr-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
   .corr-status{text-align:left; margin-top:6px}
   .corrected.done .corr-actions{display:none}
@@ -753,6 +754,21 @@ function saveSet(){
   if(l) l.value=getLang();
 })();
 
+/* ----- tiny L10N for the "Natural version" block (tips language drives it) ----- */
+const L10N={
+  English:    {natural:'Natural version', youSaidIt:'You said it — nice work!'},
+  Portuguese: {natural:'Versão natural', youSaidIt:'Você conseguiu — mandou bem!'},
+  Spanish:    {natural:'Versión natural', youSaidIt:'¡Lo dijiste — buen trabajo!'},
+  Japanese:   {natural:'自然な言い方', youSaidIt:'言えました — よくできました！'},
+  Korean:     {natural:'자연스러운 표현', youSaidIt:'잘 말했어요 — 훌륭해요!'},
+  French:     {natural:'Version naturelle', youSaidIt:"Tu l'as dit — bravo !"},
+  German:     {natural:'Natürliche Version', youSaidIt:'Du hast es gesagt — gut gemacht!'},
+  Italian:    {natural:'Versione naturale', youSaidIt:"L'hai detto — ottimo lavoro!"},
+  Chinese:    {natural:'自然说法', youSaidIt:'你说对了——真棒！'},
+  Thai:       {natural:'ประโยคที่เป็นธรรมชาติ', youSaidIt:'พูดได้แล้ว — เก่งมาก!'}
+};
+function t(key){ return (L10N[getLang()]||L10N.English)[key] || L10N.English[key]; }
+
 /* ----- rotating sample sentences + dynamic hint (the "try this next" loop lands here) ----- */
 const SAMPLE_HINTS=[
   "I think this is a really nice place to study.",
@@ -989,7 +1005,9 @@ function renderAnalysis(data){
   }
   if(data.corrected && data.corrected.trim()){
     const corr=escapeHtml(data.corrected);
-    html += `<div class="corrected" id="corrBlock"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${corr}
+    const tr=(getLang()!=='English' && data.corrected_translation && data.corrected_translation.trim())
+      ? `<span class="corr-tr">${escapeHtml(data.corrected_translation)}</span>` : '';
+    html += `<div class="corrected" id="corrBlock"><i data-lucide="sparkles"></i><div><b>${t('natural')}:</b> ${corr}${tr}
       <div class="corr-actions">
         <button class="mini hear" data-s="${corr}" onclick="hearWord(this.dataset.s, 0.85)" aria-label="Hear the corrected sentence">
           <i data-lucide="volume-2"></i>Hear it
@@ -1155,7 +1173,7 @@ async function sayWord(word,id,sent){
         if(sent){
           const cb=document.getElementById('corrBlock');
           if(cb) cb.classList.add('done');
-          st.textContent='You said it — nice work!'; st.classList.remove('bad');
+          st.textContent=t('youSaidIt'); st.classList.remove('bad');
           announce('Corrected sentence pronounced correctly.');
         } else {
           const cardEl=document.getElementById(id);
