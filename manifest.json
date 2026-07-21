@@ -1,0 +1,16 @@
+{
+  "name": "SpeakCheck — Pronunciation Lab",
+  "short_name": "SpeakCheck",
+  "description": "Speak English, get instant AI coaching on pronunciation, grammar and vocabulary.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF2FB",
+  "theme_color": "#3B53A4",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

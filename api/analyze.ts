@@ -48,7 +48,7 @@ async function readBody(req: VercelRequest): Promise<Buffer> {
 const ANALYZE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["transcript", "cards", "corrected", "praise"],
+  required: ["transcript", "cards", "corrected", "praise", "next_sentence"],
   properties: {
     transcript: {
       type: "array",
@@ -81,6 +81,7 @@ const ANALYZE_SCHEMA = {
     },
     corrected: { type: "string" },
     praise: { type: "string" },
+    next_sentence: { type: "string" }, // new practice sentence targeting this learner's weaknesses; "" when clean
   },
 } as const;
 
@@ -103,6 +104,8 @@ Produce an analysis with:
 3. "corrected": the natural, grammatically correct version of what the speaker meant. If the sentence is already natural, repeat it as-is.
 
 4. "praise": one short, specific positive sentence about something the speaker did well ("" only if the input is a single word or gibberish).
+
+5. "next_sentence": one NEW short English practice sentence (8-14 words) that deliberately exercises this learner's weakest sounds and mistakes from this attempt — reuse the tricky sounds (e.g. flagged "th" → include think/weather/three), not the same sentence. Always plain English regardless of tip_language. "" when there were no issues to practise.
 
 Rules: do not invent words that are not in the input. Do not flag proper nouns, filler words ("uh", "um") or casual-but-correct speech. When in doubt, don't flag. Empty cards array is a valid, good outcome.
 

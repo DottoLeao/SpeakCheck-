@@ -93,10 +93,17 @@ A password-gated page at **`/admin`** shows live API usage, estimated cost (Deep
 
 > Capacity at this scale: a 20-student class at moderate use (~8 analyses + 6 "say it" checks per student, twice a week) costs roughly **$6/month** total. The bottleneck is ongoing cost (cents), not concurrency; Deepgram's free credit alone covers many months. Adjust the planner's assumptions to fit your class.
 
+## Learning loop & PWA
+
+- **Score delta**: record the same sentence again and the score ring shows **▲/▼ vs your last try** (detected automatically by transcript similarity — no button needed).
+- **Try this next**: every analysis ends with a fresh sentence generated to exercise *your* weakest sounds; it also becomes the mic-card hint, closing the practice loop.
+- **Say the corrected sentence**: the "Natural version" block has Hear it / Say it — the whole sentence is verified server-side (≥80% of its words recognized in order).
+- **Installable PWA**: `manifest.json` + `sw.js` (HTML network-first so deploys land immediately; API never cached). On your phone: browser menu → *Add to Home Screen*. Note: on iOS, mic access inside an installed PWA needs iOS 16.4+ — if it fails, use it in Safari directly.
+
 ## Roadmap
 
 - [x] Per-session score
-- [ ] Suggested next sentence targeting your weak sounds (ELSA-style guided loop)
+- [x] Suggested next sentence targeting your weak sounds (ELSA-style guided loop)
 - [ ] Practice history + daily streak via localStorage (no account needed)
 - [ ] IPA transcription on pronunciation cards
 - [ ] Spaced repetition of past mistakes; minimal-pair drills

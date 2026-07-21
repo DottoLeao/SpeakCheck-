@@ -31,8 +31,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
 
+  // Two modes: ?word= verifies a single word; ?sentence= verifies a whole sentence.
   const target = clean(String(req.query.word ?? ""));
-  if (!target) return res.status(400).json({ error: "server-error" });
+  const sentenceTarget = String(req.query.sentence ?? "")
+    .split(/\s+/).map(clean).filter(Boolean);
+  if (!target && !sentenceTarget.length) return res.status(400).json({ error: "server-error" });
 
   try {
     const audio = await readBody(req);
@@ -54,9 +57,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const words = alt?.words ?? [];
     const heard = words.map((w) => clean(w.word)).filter(Boolean).join(" ");
 
-    // Pass = the exact target word was heard, confidently. Deepgram transcribes what was
-    // actually said, so minimal pairs (three/tree, ship/sheep) are naturally protected.
-    const pass = words.some((w) => clean(w.word) === target && w.confidence >= PASS_CONFIDENCE);
+    let pass: boolean;
+    if (sentenceTarget.length) {
+      // Sentence mode: ≥80% of the target words recognized, in approximate order
+      // (sequential matching tolerates recognizer insertions between words).
+      const heardTokens = words.map((w) => clean(w.word)).filter(Boolean);
+      let i = 0, matched = 0;
+      for (const t of sentenceTarget) {
+        const at = heardTokens.indexOf(t, i);
+        if (at !== -1) { matched++; i = at + 1; }
+      }
+      pass = matched / sentenceTarget.length >= 0.8;
+    } else {
+      // Word mode: the exact target word was heard, confidently. Deepgram transcribes what
+      // was actually said, so minimal pairs (three/tree, ship/sheep) are naturally protected.
+      pass = words.some((w) => clean(w.word) === target && w.confidence >= PASS_CONFIDENCE);
+    }
 
     const feedback = pass
       ? ""

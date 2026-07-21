@@ -6,6 +6,13 @@
 <title>Pronunciation Lab — Pacific English Study</title>
 <meta name="theme-color" content="#3B53A4" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#111830" media="(prefers-color-scheme: dark)" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+<link rel="apple-touch-icon" href="/icons/icon-180.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="SpeakCheck" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -275,6 +282,42 @@
   }
   .score-info b{display:block; font-family:"Schibsted Grotesk"; font-weight:700; font-size:16px; color:var(--ink)}
   .score-info span{font-size:13px; color:var(--muted)}
+  .score-delta{
+    display:block; width:fit-content; margin-top:6px;
+    font-size:11.5px; font-weight:800; letter-spacing:.02em;
+    padding:3px 9px; border-radius:999px; border:1px solid var(--line);
+  }
+  .score-delta.up{color:var(--green-deep); background:var(--green-tint); border-color:var(--done-border)}
+  .score-delta.down{color:var(--err); background:var(--err-tint); border-color:var(--err)}
+  .score-delta.same{color:var(--muted)}
+
+  /* small inline action buttons (corrected sentence + next-up) */
+  .mini{
+    display:inline-flex; align-items:center; gap:6px; font:inherit;
+    font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:8px;
+    border:0; cursor:pointer; transition:background .15s, filter .15s;
+  }
+  .mini .lucide{width:13px; height:13px}
+  .mini.hear{background:var(--navy-tint); color:var(--navy)}
+  .mini.hear:hover{background:var(--hear-hover)}
+  .mini.say{background:var(--green); color:#fff}
+  .mini.say:hover{filter:brightness(.95)}
+  .mini.say.rec{background:var(--err)}
+  .mini:focus-visible{outline:2px solid var(--navy); outline-offset:2px}
+  .corr-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  .corr-status{text-align:left; margin-top:6px}
+  .corrected.done .corr-actions{display:none}
+  .corrected.done .corr-status{color:var(--green-deep); font-weight:600}
+
+  /* "Try this next" guided practice */
+  .next-up{
+    display:flex; gap:10px; align-items:flex-start; margin-top:14px;
+    padding:14px; border-radius:12px;
+    background:var(--navy-tint); border:1px solid var(--tag-border);
+  }
+  .next-up > .lucide{width:17px; height:17px; color:var(--navy); flex:none; margin-top:2px}
+  .next-up b{display:block; font-size:12px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--navy)}
+  .next-up .ns{display:block; font-size:14.5px; font-weight:600; color:var(--ink); margin:4px 0 10px; line-height:1.5}
 
   /* ---------- slow-playback button ---------- */
   .act.slow{flex:0 0 auto; min-width:52px; background:var(--navy-tint); color:var(--navy); font-weight:800; letter-spacing:.02em}
@@ -408,6 +451,9 @@
     footer{background:var(--navy-deep)}
   }
 
+  @media (max-width:640px){
+    :root{--blur:12px}   /* lighter backdrop blur on small screens (weaker GPUs) */
+  }
   @media (max-width:480px){
     .topstrip .inner span:last-child{display:none}
     .nav .tag span{display:none}
@@ -472,7 +518,7 @@
       <div class="bars" id="bars"><span></span><span></span><span></span><span></span><span></span></div>
       <div class="mic-label" id="label" role="status" aria-live="polite">Tap the microphone and speak in English</div>
     </div>
-    <p class="hint">Try saying: <b>"I think this is a really nice place to study."</b></p>
+    <p class="hint" id="hint">Try saying: <b>"I think this is a really nice place to study."</b></p>
     <div class="coach-set">
       <label>Accent
         <select id="setAccent" onchange="saveSet()" aria-label="English accent to learn">
@@ -707,6 +753,24 @@ function saveSet(){
   if(l) l.value=getLang();
 })();
 
+/* ----- rotating sample sentences + dynamic hint (the "try this next" loop lands here) ----- */
+const SAMPLE_HINTS=[
+  "I think this is a really nice place to study.",
+  "She thought the weather would be rather cold on Thursday.",
+  "We worked together and finished everything yesterday.",
+  "The ship leaves the beach at three thirty.",
+  "My brother loves visiting the village in winter.",
+  "They walked through the forest and talked for hours.",
+  "Would you rather live in the city or the countryside?",
+  "He asked a very important question about the vocabulary."
+];
+function setHint(s){ const h=document.getElementById('hint'); if(h) h.innerHTML='Try saying: <b>"'+escapeHtml(s)+'"</b>'; }
+function randomHint(){ setHint(SAMPLE_HINTS[Math.floor(Math.random()*SAMPLE_HINTS.length)]); }
+randomHint();
+
+/* last attempt, for the ▲/▼ score-delta badge (page memory only) */
+let prevAttempt=null;
+
 /* ----- TTS engine (iOS-safe: gesture unlock, GC guard, cancel-swallow guard, accent voices) ----- */
 const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const ACCENT_LANG={au:'en-AU', uk:'en-GB', us:'en-US'};
@@ -761,6 +825,7 @@ function resetApp(){
   };
   micIdle();
   setLabel('Tap the microphone and speak in English');
+  randomHint();
   announce('Reset. Ready to record again.');
   if(card.classList.contains('hide')){ clear(); return; }
   anim(card,{opacity:[1,0],transform:['translateY(0)','translateY(8px)']},{duration:.25}).finished.then(clear);
@@ -890,6 +955,23 @@ function renderAnalysis(data){
 
   let html='';
   const score=computeScore(dg, cards);
+
+  // ▲/▼ delta vs the previous attempt — only when it's (roughly) the same sentence
+  const curTokens=words.map(t=>t.word);
+  let deltaHtml='', deltaSaid='';
+  if(prevAttempt && score!=null){
+    const a=new Set(prevAttempt.tokens), b=new Set(curTokens);
+    let inter=0; b.forEach(t=>{ if(a.has(t)) inter++; });
+    const jac=inter/((a.size+b.size-inter)||1);
+    if(jac>=0.5){
+      const d=score-prevAttempt.score;
+      const cls=d>0?'up': d<0?'down':'same';
+      const txt=d>0?('▲ +'+d): d<0?('▼ '+d):'= same';
+      deltaHtml=`<span class="score-delta ${cls}">${txt} vs last try</span>`;
+      deltaSaid=d>0?('Up '+d+' points from your last try. '): d<0?('Down '+(-d)+' points from your last try. '):'Same as your last try. ';
+    }
+  }
+
   if(score!=null){
     const band=score>=85?'good': score>=60?'mid':'low';
     const label=score>=85?'Excellent!': score>=60?'Good — keep going':'Keep practising';
@@ -902,11 +984,22 @@ function renderAnalysis(data){
         </svg>
         <div class="score-num" id="scoreNum">0</div>
       </div>
-      <div class="score-info"><b>Session score</b><span>${label}</span></div>
+      <div class="score-info"><b>Session score</b><span>${label}</span>${deltaHtml}</div>
     </div>`;
   }
   if(data.corrected && data.corrected.trim()){
-    html += `<div class="corrected"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${escapeHtml(data.corrected)}</div></div>`;
+    const corr=escapeHtml(data.corrected);
+    html += `<div class="corrected" id="corrBlock"><i data-lucide="sparkles"></i><div><b>Natural version:</b> ${corr}
+      <div class="corr-actions">
+        <button class="mini hear" data-s="${corr}" onclick="hearWord(this.dataset.s, 0.85)" aria-label="Hear the corrected sentence">
+          <i data-lucide="volume-2"></i>Hear it
+        </button>
+        <button class="mini say" id="say_corr" data-s="${corr}" onclick="sayWord(this.dataset.s,'corr',1)" aria-label="Say the corrected sentence yourself">
+          <i data-lucide="mic"></i>Say it
+        </button>
+      </div>
+      <div class="fw-status corr-status" id="st_corr" role="status" aria-live="polite"></div>
+    </div></div>`;
   }
 
   if(cards.length){
@@ -960,9 +1053,21 @@ function renderAnalysis(data){
   } else if(!cards.length){
     html += '<div class="clean"><i data-lucide="badge-check"></i>Nothing to fix — nicely done!</div>';
   }
+
+  // guided next step: a fresh sentence targeting this learner's weak sounds
+  if(data.next_sentence && data.next_sentence.trim()){
+    const ns=escapeHtml(data.next_sentence);
+    html += `<div class="next-up"><i data-lucide="target"></i><div>
+      <b>Try this next</b><span class="ns">"${ns}"</span>
+      <button class="mini hear" data-s="${ns}" onclick="hearWord(this.dataset.s, 0.85)" aria-label="Hear the practice sentence">
+        <i data-lucide="volume-2"></i>Hear it
+      </button>
+    </div></div>`;
+    setHint(data.next_sentence);   // the mic-card hint now points at exactly what to practise
+  }
   wrap.innerHTML=html;
   refreshIcons();
-  anim('.corrected, .clean',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
+  anim('.corrected, .clean, .next-up',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4});
   if(cards.length) anim('.fw',{opacity:[0,1],transform:['translateY(10px)','translateY(0)']},{duration:.4,delay:stagger(0.07)});
   if(dg.length) anim('.wchip',{opacity:[0,1],transform:['translateY(6px)','translateY(0)']},{duration:.3,delay:stagger(0.02)});
   if(score!=null){
@@ -984,8 +1089,9 @@ function renderAnalysis(data){
       }
     }
   }
+  if(score!=null) prevAttempt={tokens:curTokens, score};   // remember for the next attempt's ▲/▼
   const heard=words.map(t=>t.word).join(' ');
-  announce((score!=null? 'Score '+score+' out of 100. ' : '')+'Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
+  announce((score!=null? 'Score '+score+' out of 100. ' : '')+deltaSaid+'Heard: '+heard+'. '+(cards.length? cards.length+(cards.length===1?' thing':' things')+' to practise.' : 'Nothing to fix. Nicely done.'));
 }
 
 /* ----- hear correct pronunciation ----- */
@@ -1013,8 +1119,8 @@ function hearWord(word, rate){
   }
 }
 
-/* ----- record a single word and check it via /api/verify ----- */
-async function sayWord(word,id){
+/* ----- record a word (or a whole sentence, sent=1) and check it via /api/verify ----- */
+async function sayWord(word,id,sent){
   if(activeCard===id){ stopWordRec(); return; }          // second tap stops early
   if(activeCard || recording || analyzing) return;
   const btn=document.getElementById('say_'+id), st=document.getElementById('st_'+id);
@@ -1037,7 +1143,8 @@ async function sayWord(word,id){
     if(blob.size<1500){ st.textContent="We didn't catch it — try again"; st.classList.add('bad'); return; }
     st.textContent='Checking…'; st.classList.remove('bad');
     try{
-      const res=await fetch('/api/verify?word='+encodeURIComponent(word),
+      const q = sent ? 'sentence='+encodeURIComponent(word) : 'word='+encodeURIComponent(word);
+      const res=await fetch('/api/verify?'+q,
         {method:'POST', headers:{'Content-Type':usedMime}, body:blob});
       if(!res.ok){
         const err=await res.json().catch(()=>({}));
@@ -1045,12 +1152,19 @@ async function sayWord(word,id){
       }
       const v=await res.json();
       if(v.pass){
-        const cardEl=document.getElementById(id);
-        cardEl.classList.add('done'); st.textContent='';
-        anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
-        document.querySelectorAll('[data-fw="'+id+'"]').forEach(sp=>{ sp.classList.remove('flag'); sp.classList.add('done'); });
-        announce(word+' pronounced correctly.');
-        checkAllDone();
+        if(sent){
+          const cb=document.getElementById('corrBlock');
+          if(cb) cb.classList.add('done');
+          st.textContent='You said it — nice work!'; st.classList.remove('bad');
+          announce('Corrected sentence pronounced correctly.');
+        } else {
+          const cardEl=document.getElementById(id);
+          cardEl.classList.add('done'); st.textContent='';
+          anim('#'+id+' .fw-check',{transform:['scale(0)','scale(1.25)','scale(1)']},{duration:.5,ease:'ease-out'});
+          document.querySelectorAll('[data-fw="'+id+'"]').forEach(sp=>{ sp.classList.remove('flag'); sp.classList.add('done'); });
+          announce(word+' pronounced correctly.');
+          checkAllDone();
+        }
       } else {
         st.textContent = v.feedback || 'Try once more'; st.classList.add('bad');
       }
@@ -1058,8 +1172,9 @@ async function sayWord(word,id){
   };
   mediaRec.start(250);
   btn.classList.add('rec');
-  st.textContent='Listening… say "'+word+'"'; st.classList.remove('bad');
-  wordTimer=setTimeout(stopWordRec, 4000);               // auto-stop after 4s
+  st.textContent= sent ? 'Listening… read the whole sentence' : 'Listening… say "'+word+'"';
+  st.classList.remove('bad');
+  wordTimer=setTimeout(stopWordRec, sent?12000:4000);    // sentences get more room than single words
 }
 function stopWordRec(){
   try{ if(mediaRec && mediaRec.state!=='inactive') mediaRec.stop(); }catch(_){ stopTracks(); }
@@ -1083,6 +1198,11 @@ function checkAllDone(){
   }
 }
 refreshIcons();
+
+/* ----- PWA: register the service worker (https only; file:// and http skip it) ----- */
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
