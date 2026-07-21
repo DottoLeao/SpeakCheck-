@@ -166,6 +166,14 @@
   @keyframes bar{0%,100%{height:6px}50%{height:24px}}
   .hint{font-size:13.5px; color:var(--muted); text-align:center; margin-top:16px}
   .hint b{color:var(--ink); font-weight:600}
+  .coach-set{display:flex; flex-wrap:wrap; justify-content:center; gap:10px 18px; margin-top:16px}
+  .coach-set label{display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--muted)}
+  .coach-set select{
+    font:inherit; font-size:13px; color:var(--ink); padding:7px 10px; border-radius:9px; max-width:150px;
+    background:var(--glass); border:1px solid var(--line);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  }
+  .coach-set select:focus-visible{outline:2px solid var(--navy); outline-offset:1px}
 
   /* ---------- Transcript (teacher-correction style) ---------- */
   .transcript{
@@ -269,7 +277,7 @@
   .score-info span{font-size:13px; color:var(--muted)}
 
   /* ---------- slow-playback button ---------- */
-  .act.slow{flex:0 0 auto; min-width:46px; background:var(--navy-tint); color:var(--navy)}
+  .act.slow{flex:0 0 auto; min-width:52px; background:var(--navy-tint); color:var(--navy); font-weight:800; letter-spacing:.02em}
   .act.slow:hover{background:var(--hear-hover)}
   .corrected .lucide{width:16px; height:16px; flex:none; margin-top:2px}
 
@@ -465,6 +473,29 @@
       <div class="mic-label" id="label" role="status" aria-live="polite">Tap the microphone and speak in English</div>
     </div>
     <p class="hint">Try saying: <b>"I think this is a really nice place to study."</b></p>
+    <div class="coach-set">
+      <label>Accent
+        <select id="setAccent" onchange="saveSet()" aria-label="English accent to learn">
+          <option value="au">🇦🇺 Australian</option>
+          <option value="uk">🇬🇧 British</option>
+          <option value="us">🇺🇸 American</option>
+        </select>
+      </label>
+      <label>Tips language
+        <select id="setLang" onchange="saveSet()" aria-label="Language for the coaching tips">
+          <option value="English">English</option>
+          <option value="Portuguese">Português</option>
+          <option value="Spanish">Español</option>
+          <option value="Japanese">日本語</option>
+          <option value="Korean">한국어</option>
+          <option value="French">Français</option>
+          <option value="German">Deutsch</option>
+          <option value="Italian">Italiano</option>
+          <option value="Chinese">中文</option>
+          <option value="Thai">ไทย</option>
+        </select>
+      </label>
+    </div>
   </section>
 
   <section class="card hide" id="resultCard">
@@ -503,7 +534,7 @@
 <script>
 /* Analysis now comes from the backend (/api/analyze): Deepgram ASR + Claude. */
 
-let recording=false, analyzing=false, activeCard=null, enVoice=null;
+let recording=false, analyzing=false, activeCard=null;
 let mediaRec=null, mediaStream=null, chunks=[], recMime='', recStartedAt=0;
 let abortCtl=null, wordTimer=null;
 const MAX_SECONDS=60, MIN_MS=700;
@@ -529,15 +560,20 @@ let lastAudio=null, audioCtx=null, audioBuf=null, decodePromise=null, playingSrc
 function keepRecording(blob){ stopPlayback(); lastAudio=blob; audioBuf=null; decodePromise=null; }
 function dropRecording(){ stopPlayback(); lastAudio=null; audioBuf=null; decodePromise=null; }
 function stopPlayback(){ if(playingSrc){ try{ playingSrc.stop(); }catch(_){} playingSrc=null; } }
+function ensureCtx(){
+  // Must run synchronously inside the tap gesture — iOS refuses resume() after an await.
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return null;
+  if(!audioCtx) audioCtx=new AC();
+  if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(_){} }
+  return audioCtx;
+}
 async function getAudioBuffer(){
   if(audioBuf) return audioBuf;
   if(!lastAudio) return null;
   if(!decodePromise){
     decodePromise=(async()=>{
-      const AC=window.AudioContext||window.webkitAudioContext;
-      if(!AC) return null;
-      if(!audioCtx) audioCtx=new AC();
-      if(audioCtx.state==='suspended'){ try{ await audioCtx.resume(); }catch(_){} }
+      if(!ensureCtx()) return null;
       audioBuf=await audioCtx.decodeAudioData(await lastAudio.arrayBuffer());
       return audioBuf;
     })().catch(()=>{ decodePromise=null; return null; });
@@ -545,6 +581,7 @@ async function getAudioBuffer(){
   return decodePromise;
 }
 async function playSlice(start, end, btn){
+  ensureCtx();                       // sync, still inside the user gesture (iOS)
   const buf=await getAudioBuffer();
   if(!buf) return;
   stopPlayback();
@@ -555,6 +592,7 @@ async function playSlice(start, end, btn){
   src.onended=()=>{ if(playingSrc===src) playingSrc=null; };
   playingSrc=src;
   src.start(0, s, d);
+  iosSoundHint();
   if(btn) anim(btn.querySelector('.lucide')||btn,{transform:['scale(1)','scale(1.25)','scale(1)']},{duration:.35});
 }
 function playMyRecording(btn){ playSlice(0, null, btn); }
@@ -654,14 +692,54 @@ function showError(code){
   setLabel(msg); announce(msg); return true;
 }
 
-/* ----- TTS voice loading (cache preferred en voice) ----- */
+/* ----- coach settings (accent + tips language, persisted in localStorage) ----- */
+function getAccent(){ try{ return localStorage.getItem('sc_accent')||'au'; }catch(_){ return 'au'; } }
+function getLang(){ try{ return localStorage.getItem('sc_lang')||'English'; }catch(_){ return 'English'; } }
+function saveSet(){
+  try{
+    localStorage.setItem('sc_accent', document.getElementById('setAccent').value);
+    localStorage.setItem('sc_lang', document.getElementById('setLang').value);
+  }catch(_){}
+}
+(function initSet(){
+  const a=document.getElementById('setAccent'), l=document.getElementById('setLang');
+  if(a) a.value=getAccent();
+  if(l) l.value=getLang();
+})();
+
+/* ----- TTS engine (iOS-safe: gesture unlock, GC guard, cancel-swallow guard, accent voices) ----- */
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const ACCENT_LANG={au:'en-AU', uk:'en-GB', us:'en-US'};
+let ttsUtterance=null, ttsPrimed=false, voicesCache=[], iosHintShown=false;
 function loadVoices(){
   if(!('speechSynthesis' in window)) return;
   const vs=speechSynthesis.getVoices();
-  enVoice = vs.find(v=>/^en(-|_)?us/i.test(v.lang) && v.localService)
-        || vs.find(v=>/^en[-_]/i.test(v.lang)) || null;
+  if(vs.length) voicesCache=vs;
 }
 if('speechSynthesis' in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+function pickVoice(accent){
+  loadVoices();
+  const want=(ACCENT_LANG[accent]||'en-AU').toLowerCase();
+  const norm=(l)=>String(l||'').toLowerCase().replace('_','-');
+  return voicesCache.find(v=>norm(v.lang)===want && v.localService)
+      || voicesCache.find(v=>norm(v.lang)===want)
+      || voicesCache.find(v=>/^en[-_]/i.test(v.lang) && v.localService)
+      || voicesCache.find(v=>/^en[-_]/i.test(v.lang)) || null;
+}
+function primeTTS(){
+  // iOS only plays TTS after a speak() fired inside a user gesture — unlock once, silently.
+  if(ttsPrimed || !('speechSynthesis' in window)) return;
+  ttsPrimed=true;
+  try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(_){}
+}
+function iosSoundHint(){
+  // The iPhone ring/silent switch mutes both TTS and Web Audio — no programmatic fix exists.
+  if(!IS_IOS || iosHintShown) return;
+  iosHintShown=true;
+  announce('If you hear no sound, flip the iPhone silent switch and raise the volume.');
+  setLabel('No sound? Flip the silent switch & raise volume.');
+  setTimeout(()=>{ if(!recording && !analyzing) setLabel('Tap the microphone and speak in English'); }, 6000);
+}
 
 /* ----- in-app reset (no page reload) ----- */
 function resetApp(){
@@ -690,6 +768,7 @@ function resetApp(){
 
 /* ----- main recording (MediaRecorder → /api/analyze) ----- */
 async function toggleRec(){
+  primeTTS();                        // first user gesture unlocks iOS speech for the session
   if(analyzing) return;
   if(recording){ stopMain(); return; }
   if(!navigator.mediaDevices || !window.MediaRecorder){ showError('no-mic'); return; }
@@ -742,7 +821,8 @@ async function finishMain(){
   abortCtl=new AbortController();
   const timeout=setTimeout(()=>{ if(abortCtl) abortCtl.abort(); }, 25000);
   try{
-    const res=await fetch('/api/analyze',{method:'POST', headers:{'Content-Type':recMime}, body:blob, signal:abortCtl.signal});
+    const res=await fetch('/api/analyze?accent='+encodeURIComponent(getAccent())+'&lang='+encodeURIComponent(getLang()),
+      {method:'POST', headers:{'Content-Type':recMime}, body:blob, signal:abortCtl.signal});
     clearTimeout(timeout);
     if(!res.ok){
       const err=await res.json().catch(()=>({}));
@@ -843,9 +923,7 @@ function renderAnalysis(data){
           <button class="act hear" data-w="${w}" onclick="hearWord(this.dataset.w)" aria-label="Hear the word ${w}">
             <i data-lucide="volume-2"></i>Hear it
           </button>
-          <button class="act slow" data-w="${w}" onclick="hearWord(this.dataset.w, 0.45)" aria-label="Hear ${w} slowly">
-            <i data-lucide="turtle"></i>
-          </button>${mine}
+          <button class="act slow" data-w="${w}" onclick="hearWord(this.dataset.w, 0.5)" aria-label="Hear ${w} slowly">0.5&times;</button>${mine}
           <button class="act say" id="say_${id}" data-w="${w}" data-id="${id}" onclick="sayWord(this.dataset.w,this.dataset.id)" aria-label="Record yourself saying ${w}">
             <i data-lucide="mic"></i>Say it
           </button>
@@ -913,13 +991,26 @@ function renderAnalysis(data){
 /* ----- hear correct pronunciation ----- */
 function hearWord(word, rate){
   if(!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  try{ speechSynthesis.resume(); }catch(_){}   // iOS Safari sometimes stays paused after cancel
-  if(!enVoice) loadVoices();
-  const u=new SpeechSynthesisUtterance(word);
-  u.lang='en-US'; u.rate=rate || .8;           // 0.45 = the "hear it slowly" button
-  if(enVoice) u.voice=enVoice;                 // else the en-US engine default still speaks
-  speechSynthesis.speak(u);
+  primeTTS();
+  const speakNow=()=>{
+    try{ speechSynthesis.resume(); }catch(_){}     // iOS sometimes stays paused
+    const u=new SpeechSynthesisUtterance(word);
+    ttsUtterance=u;                                // global ref — iOS GC kills the audio otherwise
+    const accent=getAccent();
+    u.lang=ACCENT_LANG[accent]||'en-AU';
+    u.rate=Math.max(0.5, rate || 0.8);             // iOS distorts/goes silent below 0.5
+    const v=pickVoice(accent);
+    if(v) u.voice=v;                               // else the engine default for u.lang still speaks
+    u.onend=u.onerror=()=>{ if(ttsUtterance===u) ttsUtterance=null; };
+    speechSynthesis.speak(u);
+    iosSoundHint();
+  };
+  if(speechSynthesis.speaking || speechSynthesis.pending){
+    speechSynthesis.cancel();                      // cancel immediately before speak swallows it on iOS…
+    setTimeout(speakNow, 90);                      // …so give it a beat
+  } else {
+    speakNow();
+  }
 }
 
 /* ----- record a single word and check it via /api/verify ----- */

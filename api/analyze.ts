@@ -10,6 +10,24 @@ const MAX_BYTES = 4 * 1024 * 1024; // Vercel request body limit is 4.5MB
 const LOW_CONFIDENCE = 0.85;       // below this, a word is flagged as a pronunciation suspect
 const MODEL = "claude-haiku-4-5";  // swap for "claude-opus-4-8" for higher quality analysis
 
+/* ---------- learner settings (allowlisted from query params) ---------- */
+const ACCENTS: Record<string, string> = {
+  au: "Australian English",
+  uk: "British English",
+  us: "American English",
+};
+const TIP_LANGS = new Set([
+  "English", "Portuguese", "Spanish", "Japanese", "Korean",
+  "French", "German", "Italian", "Chinese", "Thai",
+]);
+
+/* Function words whose ASR confidence is noise, not a pronunciation signal. */
+const STOP_WORDS = new Set([
+  "a", "an", "in", "on", "at", "to", "of", "is", "it", "am", "and", "or",
+  "the", "but", "as", "by", "be", "do", "so", "up", "we", "he", "me", "my",
+  "no", "if", "us", "uh", "um", "oh",
+]);
+
 /* ---------- best-effort per-instance rate limit ---------- */
 const hits = new Map<string, { n: number; t: number }>();
 function rateLimited(ip: string, max = 20, windowMs = 60_000): boolean {
@@ -68,7 +86,7 @@ const ANALYZE_SCHEMA = {
 
 const SYSTEM_PROMPT = `You are the analysis engine of SpeakCheck, a friendly English coaching app for language learners at a school in Australia.
 
-You receive JSON: {"words": [{"word": "...", "confidence": 0.0-1.0}, ...]} — the output of a speech recognizer, in spoken order. Words with confidence below ${LOW_CONFIDENCE} are marked pronunciation suspects.
+You receive JSON: {"words": [{"word": "...", "confidence": 0.0-1.0}, ...], "accent": "...", "tip_language": "..."}. "words" is the output of a speech recognizer, in spoken order; words with confidence below ${LOW_CONFIDENCE} are marked pronunciation suspects. "accent" is the English variety the learner is being taught. "tip_language" is the language the learner reads most comfortably.
 
 Produce an analysis with:
 
@@ -86,13 +104,24 @@ Produce an analysis with:
 
 4. "praise": one short, specific positive sentence about something the speaker did well ("" only if the input is a single word or gibberish).
 
-Rules: do not invent words that are not in the input. Do not flag proper nouns, filler words ("uh", "um") or casual-but-correct speech. When in doubt, don't flag. Empty cards array is a valid, good outcome.`;
+Rules: do not invent words that are not in the input. Do not flag proper nouns, filler words ("uh", "um") or casual-but-correct speech. When in doubt, don't flag. Empty cards array is a valid, good outcome.
+
+Judge pronunciation against the learner's "accent" variety — NEVER flag a pronunciation that is correct in that variety (e.g. non-rhotic "rather" /ˈrɑːðə/ is correct in Australian and British English). Tips should teach the sounds of that variety.
+
+NEVER create pronunciation cards for one- or two-letter words or basic function words (a, an, in, on, at, to, of, is, it, and, or, the, but) — recognizer confidence on these is noise, not a pronunciation signal.
+
+Write every "tip" and "praise" in the learner's "tip_language". Keep "word", "focus" and "corrected" in English — they are the study material. When tip_language is English, everything is in English.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "server-error" });
 
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
+
+  // Learner settings from the client (allowlisted — anything unknown falls back to defaults).
+  const accent = ACCENTS[String(req.query.accent ?? "au").toLowerCase()] ?? ACCENTS.au;
+  const langQ = String(req.query.lang ?? "English");
+  const tipLang = TIP_LANGS.has(langQ) ? langQ : "English";
 
   try {
     const audio = await readBody(req);
@@ -138,7 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       ],
       output_config: { format: { type: "json_schema", schema: ANALYZE_SCHEMA } },
-      messages: [{ role: "user", content: JSON.stringify({ words }) }],
+      messages: [{ role: "user", content: JSON.stringify({ words, accent, tip_language: tipLang }) }],
     });
 
     const text = msg.content.find((b) => b.type === "text");
@@ -152,8 +181,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!Array.isArray(analysis.transcript) || analysis.transcript.length === 0) {
       return res.status(502).json({ error: "server-error" });
     }
-    // `focus` must be a literal substring of `word` — the client highlights it inside the word.
     if (Array.isArray(analysis.cards)) {
+      // Guardrail: drop pronunciation cards for tiny function words (ASR noise, not signal),
+      // and un-flag their transcript entries so the UI stays consistent.
+      const dropped = new Set<string>();
+      analysis.cards = analysis.cards.filter((c: any) => {
+        const w = String(c.word ?? "").toLowerCase();
+        const noise = c.type === "pronunciation" && (w.length <= 2 || STOP_WORDS.has(w));
+        if (noise) dropped.add(c.id);
+        return !noise;
+      });
+      if (dropped.size && Array.isArray(analysis.transcript)) {
+        for (const t of analysis.transcript) {
+          if (dropped.has(t.card_id)) { t.status = "ok"; t.card_id = ""; }
+        }
+      }
+
+      // `focus` must be a literal substring of `word` — the client highlights it inside the word.
       for (const c of analysis.cards) {
         if (typeof c.focus !== "string" || !c.word?.toLowerCase().includes(c.focus.toLowerCase())) {
           c.focus = "";
