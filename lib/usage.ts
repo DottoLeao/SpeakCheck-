@@ -91,10 +91,37 @@ export async function checkQuota(
 
 /* ---------- writers (await-able, never throw) ---------- */
 
-const deviceCmds = (d: string, device?: string): Cmd[] =>
-  device
-    ? [["ZINCRBY", `sc:day:${d}:dev`, 1, device], ["EXPIRE", `sc:day:${d}:dev`, 1296000]] // 15d
-    : [];
+/* ---------- user identity (Google sign-in) ---------- */
+
+export async function recordLogin(
+  u: { sub: string; email: string; name: string; pic: string },
+  device?: string
+): Promise<void> {
+  const now = Date.now();
+  const cmds: Cmd[] = [
+    ["HSET", `sc:user:${u.sub}`, "email", u.email, "name", u.name, "pic", u.pic, "lastSeen", now],
+    ["HSETNX", `sc:user:${u.sub}`, "firstSeen", now],
+    ["SADD", "sc:users", u.sub],
+  ];
+  if (device) {
+    cmds.push(["SADD", `sc:user:${u.sub}:devices`, device], ["SADD", "sc:devices", device]);
+  }
+  await pipeline(cmds);
+}
+
+/* Daily ranking is keyed by the request principal (user sub when signed in,
+   device id otherwise); signed-in requests also keep the user↔device link fresh. */
+const principalCmds = (d: string, principal?: string, sub?: string, device?: string): Cmd[] => {
+  const cmds: Cmd[] = [];
+  if (principal) {
+    cmds.push(["ZINCRBY", `sc:day:${d}:dev`, 1, principal], ["EXPIRE", `sc:day:${d}:dev`, 1296000]); // 15d
+  }
+  if (sub) {
+    cmds.push(["HSET", `sc:user:${sub}`, "lastSeen", Date.now()]);
+    if (device) cmds.push(["SADD", `sc:user:${sub}:devices`, device], ["SADD", "sc:devices", device]);
+  }
+  return cmds;
+};
 
 export async function trackAnalyze(m: {
   seconds?: number;
@@ -102,6 +129,8 @@ export async function trackAnalyze(m: {
   outTok?: number;
   cacheRead?: number;
   cacheCreate?: number;
+  principal?: string;
+  sub?: string;
   device?: string;
   error?: boolean;
 }): Promise<void> {
@@ -118,18 +147,24 @@ export async function trackAnalyze(m: {
     ["INCRBY", "sc:cache_read", Math.round(m.cacheRead || 0)],
     ["INCRBY", "sc:cache_create", Math.round(m.cacheCreate || 0)],
     ["INCR", `sc:day:${d}:analyze`],
-    ...deviceCmds(d, m.device),
+    ...principalCmds(d, m.principal, m.sub, m.device),
   ]);
 }
 
-export async function trackVerify(m: { seconds?: number; pass?: boolean; device?: string }): Promise<void> {
+export async function trackVerify(m: {
+  seconds?: number;
+  pass?: boolean;
+  principal?: string;
+  sub?: string;
+  device?: string;
+}): Promise<void> {
   const d = day();
   await pipeline([
     ["INCR", "sc:verify:count"],
     ["INCR", m.pass ? "sc:verify:pass" : "sc:verify:fail"],
     ["INCRBYFLOAT", "sc:dg_sec", m.seconds || 0],
     ["INCR", `sc:day:${d}:verify`],
-    ...deviceCmds(d, m.device),
+    ...principalCmds(d, m.principal, m.sub, m.device),
   ]);
 }
 
@@ -162,6 +197,12 @@ export type Stats = {
     limits: typeof LIMITS;
     topDevices: { id: string; count: number }[];
   };
+  users: {
+    total: number;
+    devices: number;
+    activeToday: number;
+    top: { id: string; name: string; email: string; pic: string; count: number; devices: number; lastSeen: number }[];
+  };
   rates: typeof RATES;
 };
 
@@ -180,6 +221,7 @@ export async function readStats(): Promise<Stats> {
     audioSeconds: 0, inTokens: 0, outTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0,
   });
   const emptyToday = (): Stats["today"] => ({ analyses: 0, verifies: 0, limits: LIMITS, topDevices: [] });
+  const emptyUsers = (): Stats["users"] => ({ total: 0, devices: 0, activeToday: 0, top: [] });
 
   if (!usageEnabled()) {
     return {
@@ -187,6 +229,7 @@ export async function readStats(): Promise<Stats> {
       cost: { deepgram: 0, claude: 0, total: 0, perAnalysis: 0 },
       daily: lastDays(14).map((date) => ({ date, analyses: 0, verifies: 0 })),
       today: emptyToday(),
+      users: emptyUsers(),
       rates,
     };
   }
@@ -200,6 +243,9 @@ export async function readStats(): Promise<Stats> {
     ["GET", `q:d:analyze:all:${d0}`],
     ["GET", `q:d:verify:all:${d0}`],
     ["ZREVRANGE", `sc:day:${d0}:dev`, 0, 9, "WITHSCORES"],
+    ["SCARD", "sc:users"],
+    ["SCARD", "sc:devices"],
+    ["ZCARD", `sc:day:${d0}:dev`],
   ]);
 
   if (!res) {
@@ -208,6 +254,7 @@ export async function readStats(): Promise<Stats> {
       cost: { deepgram: 0, claude: 0, total: 0, perAnalysis: 0 },
       daily: days.map((date) => ({ date, analyses: 0, verifies: 0 })),
       today: emptyToday(),
+      users: emptyUsers(),
       rates,
     };
   }
@@ -246,12 +293,43 @@ export async function readStats(): Promise<Stats> {
     topDevices,
   };
 
+  // join today's top principals with their Google profiles (2nd pipeline)
+  const users: Stats["users"] = {
+    total: N(res[base + 3]?.result),
+    devices: N(res[base + 4]?.result),
+    activeToday: N(res[base + 5]?.result),
+    top: [],
+  };
+  if (topDevices.length) {
+    const prof = await pipeline(
+      topDevices.flatMap((t) => [
+        ["HGETALL", `sc:user:${t.id}`],
+        ["SCARD", `sc:user:${t.id}:devices`],
+      ])
+    );
+    users.top = topDevices.map((t, i) => {
+      const flat = (prof?.[i * 2]?.result ?? []) as any[];
+      const h: Record<string, string> = {};
+      for (let j = 0; j + 1 < flat.length; j += 2) h[String(flat[j])] = String(flat[j + 1]);
+      return {
+        id: t.id,
+        name: h.name || "Anonymous device",
+        email: h.email || "",
+        pic: h.pic || "",
+        count: t.count,
+        devices: N(prof?.[i * 2 + 1]?.result),
+        lastSeen: N(h.lastSeen),
+      };
+    });
+  }
+
   return {
     configured: true,
     totals,
     cost: { deepgram, claude, total, perAnalysis: totals.analyses ? total / totals.analyses : 0 },
     daily,
     today,
+    users,
     rates,
   };
 }

@@ -108,6 +108,8 @@
   .devs td{padding:7px 8px; border-bottom:1px dashed var(--line)}
   .devs td.n{text-align:right; font-weight:700; font-family:"Schibsted Grotesk"}
   .devs code{background:rgba(127,127,127,.12); padding:1px 7px; border-radius:6px; font-size:12px}
+  .uav{width:24px; height:24px; border-radius:50%; vertical-align:-7px; margin-right:8px}
+  .uav-t{display:inline-grid; place-items:center; background:var(--navy); color:#fff; font-size:12px; font-weight:700}
 
   /* bar chart */
   .chart{display:flex; align-items:flex-end; gap:5px; height:120px}
@@ -166,6 +168,12 @@
     </div>
 
     <div class="grid" id="stats"></div>
+
+    <div class="sec glass">
+      <h2>Users</h2>
+      <div class="grid" id="userCards" style="margin-bottom:4px"></div>
+      <div id="userWrap"></div>
+    </div>
 
     <div class="sec glass">
       <h2>Today — quotas &amp; who's spending</h2>
@@ -281,6 +289,26 @@ function render(d){
   $("stats").innerHTML = cards.map(x =>
     `<div class="stat glass"><div class="k">${x.k}</div><div class="v${x.cost?' cost':''}">${x.v}</div><div class="s">${x.s}</div></div>`
   ).join("");
+
+  // users (Google sign-in)
+  const us = d.users || { total:0, devices:0, activeToday:0, top:[] };
+  $("userCards").innerHTML = [
+    { k:"Signed-in users", v:int(us.total), s:"all time" },
+    { k:"Active today", v:int(us.activeToday), s:"people/devices with requests" },
+    { k:"Devices", v:int(us.devices), s:"distinct browsers seen" },
+  ].map(x => `<div class="stat glass"><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="s">${x.s}</div></div>`).join("");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const rel = (ms) => ms ? new Date(ms).toLocaleString() : "—";
+  $("userWrap").innerHTML = (us.top && us.top.length)
+    ? `<table class="devs"><tr><th>Top today</th><th>Email</th><th style="text-align:right">Requests</th><th style="text-align:right">Devices</th><th>Last seen</th></tr>` +
+      us.top.map(u => {
+        const av = u.pic
+          ? `<img class="uav" src="${esc(u.pic)}" alt="" referrerpolicy="no-referrer">`
+          : `<span class="uav uav-t">${esc((u.name||"?")[0].toUpperCase())}</span>`;
+        return `<tr><td>${av}${esc(u.name)}</td><td>${esc(u.email)||"<i>—</i>"}</td>` +
+          `<td class="n">${int(u.count)}</td><td class="n">${u.email?int(u.devices):"—"}</td><td>${rel(u.lastSeen)}</td></tr>`;
+      }).join("") + `</table>`
+    : `<div class="qnote">No sign-ins yet — Google login not configured, or nobody has logged in today.</div>`;
 
   // today: quota consumption + top devices
   const td = d.today || { analyses:0, verifies:0, limits:{}, topDevices:[] };

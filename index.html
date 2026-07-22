@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/lucide@1.25.0/dist/umd/lucide.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/motion@12.42.2/dist/motion.js" defer></script>
 <style>
   :root{
@@ -113,6 +114,22 @@
     display:flex; align-items:center; gap:6px;
   }
   .nav .tag .lucide{width:14px;height:14px}
+  .user-chip{display:flex; align-items:center; gap:8px; min-width:0}
+  .user-chip img{width:26px; height:26px; border-radius:50%; flex:none}
+  .user-chip span{font-size:12.5px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px}
+  .user-chip button{
+    font:inherit; font-size:11.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:var(--glass); color:var(--muted);
+    padding:5px 10px; border-radius:999px;
+  }
+  .user-chip button:hover{color:var(--ink)}
+
+  /* sign-in gate (shown when Google login is configured and there is no session) */
+  .gate{display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:16px 8px 20px}
+  .gate .lucide{width:30px; height:30px; color:var(--navy); margin-bottom:4px}
+  .gate h3{font-size:18px; letter-spacing:-.01em; color:var(--ink)}
+  .gate p{font-size:13.5px; color:var(--muted); max-width:40ch; margin-bottom:12px}
+  #micCard.gated .mic-zone, #micCard.gated .hint, #micCard.gated .coach-set{display:none}
 
   /* ---------- Page header ---------- */
   .head{background:transparent}
@@ -497,6 +514,11 @@
         <small>Gold Coast · Australia</small>
       </span>
     </a>
+    <div class="user-chip hide" id="userChip">
+      <img id="userPic" class="hide" alt="" referrerpolicy="no-referrer" />
+      <span id="userName"></span>
+      <button onclick="signOut()" aria-label="Sign out">Sign out</button>
+    </div>
     <div class="tag"><i data-lucide="graduation-cap"></i><span>Student Hub</span></div>
   </div>
 </nav>
@@ -510,7 +532,13 @@
 </header>
 
 <main class="wrap">
-  <section class="card">
+  <section class="card" id="micCard">
+    <div class="gate hide" id="gate">
+      <i data-lucide="lock" aria-hidden="true"></i>
+      <h3>Sign in to start practising</h3>
+      <p>Use your Google account — it keeps the class organised and your practice fair.</p>
+      <div id="gBtn"></div>
+    </div>
     <div class="mic-zone">
       <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Start recording" aria-pressed="false">
         <span class="ring"></span>
@@ -774,6 +802,7 @@ const ERR_MSGS = {
   'network':'We need internet to analyze your speech — check your connection and try again',
   'rate-limited':'Too many recordings in a row — wait a minute and try again',
   'quota':'Daily practice limit reached — great work today! Come back tomorrow.',
+  'auth':'Please sign in to practise.',
   'server-error':'Something went wrong on our side — try again in a moment',
   'aborted':null
 };
@@ -795,6 +824,65 @@ function deviceId(){
     return d;
   }catch(_){ return 'anon'; }
 }
+
+/* ----- Google sign-in (enabled server-side by GOOGLE_CLIENT_ID; open until then) ----- */
+let AUTH={authRequired:false, googleClientId:''};
+function session(){ try{ return localStorage.getItem('sc_session')||''; }catch(_){ return ''; } }
+function sessionUser(){ try{ return JSON.parse(localStorage.getItem('sc_user')||'null'); }catch(_){ return null; } }
+function setSession(tok,user){ try{ localStorage.setItem('sc_session',tok); localStorage.setItem('sc_user',JSON.stringify(user)); }catch(_){} }
+function clearSession(){ try{ localStorage.removeItem('sc_session'); localStorage.removeItem('sc_user'); }catch(_){} }
+function authHeaders(){ const t=session(); return t? {'Authorization':'Bearer '+t} : {}; }
+function updateAuthUI(){
+  const gated = AUTH.authRequired && !session();
+  const mc=document.getElementById('micCard'), gate=document.getElementById('gate');
+  if(mc) mc.classList.toggle('gated', gated);
+  if(gate) gate.classList.toggle('hide', !gated);
+  const u=sessionUser(), chip=document.getElementById('userChip');
+  if(chip){
+    chip.classList.toggle('hide', !(AUTH.authRequired && u && session()));
+    if(u){
+      document.getElementById('userName').textContent=u.name||u.email||'';
+      const im=document.getElementById('userPic');
+      if(u.pic){ im.src=u.pic; im.classList.remove('hide'); } else im.classList.add('hide');
+    }
+  }
+  if(gated) refreshIcons();
+}
+function mountGoogle(attempt){
+  if(!(window.google && google.accounts && google.accounts.id)){
+    if((attempt||0)<40) setTimeout(()=>mountGoogle((attempt||0)+1), 300);   // GIS script still loading
+    return;
+  }
+  try{
+    google.accounts.id.initialize({ client_id: AUTH.googleClientId, callback: onGoogleCred, ux_mode:'popup' });
+    const el=document.getElementById('gBtn');
+    if(el) google.accounts.id.renderButton(el, { theme:'outline', size:'large', shape:'pill', text:'signin_with' });
+  }catch(_){}
+}
+async function onGoogleCred(resp){
+  try{
+    const r=await fetch('/api/auth',{method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({credential:resp.credential, device:deviceId()})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const msg=(j.error==='not-allowed') ? "This account isn't authorized — ask your teacher." : ERR_MSGS['auth'];
+      setLabel(msg); announce(msg); return;
+    }
+    setSession(j.token, j.user);
+    updateAuthUI();
+    announce('Signed in as '+(j.user.name||j.user.email));
+  }catch(_){ setLabel(ERR_MSGS['network']); }
+}
+function signOut(){ clearSession(); updateAuthUI(); }
+function authFailed(){ clearSession(); updateAuthUI(); }   // 401 from the API → session expired/revoked
+(async function initAuth(){
+  try{
+    const r=await fetch('/api/config', {cache:'no-store'});
+    if(r.ok) AUTH=await r.json();
+  }catch(_){}
+  updateAuthUI();
+  if(AUTH.authRequired && AUTH.googleClientId) mountGoogle(0);
+})();
 
 /* ----- coach settings (accent + tips language, persisted in localStorage) ----- */
 function getAccent(){ try{ return localStorage.getItem('sc_accent')||'au'; }catch(_){ return 'au'; } }
@@ -960,11 +1048,12 @@ async function finishMain(){
   const timeout=setTimeout(()=>{ if(abortCtl) abortCtl.abort(); }, 25000);
   try{
     const res=await fetch('/api/analyze?accent='+encodeURIComponent(getAccent())+'&lang='+encodeURIComponent(getLang()),
-      {method:'POST', headers:{'Content-Type':recMime, 'X-Device-Id':deviceId()}, body:blob, signal:abortCtl.signal});
+      {method:'POST', headers:Object.assign({'Content-Type':recMime, 'X-Device-Id':deviceId()}, authHeaders()), body:blob, signal:abortCtl.signal});
     clearTimeout(timeout);
     if(!res.ok){
       const err=await res.json().catch(()=>({}));
       analyzing=false; killLoader(); card.classList.add('hide');
+      if(err.error==='auth') authFailed();               // expired/invalid session → show the gate again
       showError(err.error || 'server-error');
       return;
     }
@@ -1220,9 +1309,10 @@ async function sayWord(word,id,sent){
     try{
       const q = sent ? 'sentence='+encodeURIComponent(word) : 'word='+encodeURIComponent(word);
       const res=await fetch('/api/verify?'+q,
-        {method:'POST', headers:{'Content-Type':usedMime, 'X-Device-Id':deviceId()}, body:blob});
+        {method:'POST', headers:Object.assign({'Content-Type':usedMime, 'X-Device-Id':deviceId()}, authHeaders()), body:blob});
       if(!res.ok){
         const err=await res.json().catch(()=>({}));
+        if(err.error==='auth') authFailed();
         st.textContent=ERR_MSGS[err.error] || ERR_MSGS['server-error']; st.classList.add('bad'); return;
       }
       const v=await res.json();

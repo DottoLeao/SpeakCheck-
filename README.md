@@ -93,6 +93,24 @@ A password-gated page at **`/admin`** shows live API usage, estimated cost (Deep
 
 > Capacity at this scale: a 20-student class at moderate use (~8 analyses + 6 "say it" checks per student, twice a week) costs roughly **$6/month** total. The bottleneck is ongoing cost (cents), not concurrency; Deepgram's free credit alone covers many months. Adjust the planner's assumptions to fit your class.
 
+## Google sign-in (access control)
+
+The app supports **Sign in with Google**: students authenticate with their Google account, the mic is gated until they do, and quotas/stats become **per person** instead of per browser. The `/admin` page shows every signed-in user (name, e-mail, devices, last seen, requests today).
+
+It auto-enables when configured — until then the app runs open. To turn it on (~5 min, one time):
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → create a project (e.g. "SpeakCheck").
+2. **APIs & Services → OAuth consent screen** → External → fill the app name → publish.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**.
+   - Authorized JavaScript origins: `https://speakcheck.vercel.app` and `http://localhost:3000`.
+4. Copy the **Client ID** (`....apps.googleusercontent.com`) → add it in Vercel as env `GOOGLE_CLIENT_ID` (Production + Development) → redeploy.
+
+From that deploy on, the sign-in gate is enforced (server-side too — `/api/analyze` and `/api/verify` return 401 without a valid session). Sessions are HMAC-signed (`AUTH_SECRET`, 30 days).
+
+**Optional allowlist**: set `ALLOWED_EMAILS=ana@gmail.com,leo@gmail.com` to restrict access to specific accounts; anyone else gets "not authorized". Leave unset to allow any Google account (default).
+
+> iOS note: the installed PWA and Safari keep separate sessions — sign in once in each. The Google popup works in both.
+
 ## Cost control (4 layers)
 
 No single student can drain the budget. Quota checks run **before** any Deepgram/Claude spend, keyed to an anonymous per-browser device id (not IP — the whole class shares the school's IP). All limits are enforced durably in KV and fail open if KV is down (the in-memory limiter still applies).

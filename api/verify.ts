@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
 import { trackVerify, checkQuota } from "../lib/usage";
+import { authRequired, getUser } from "../lib/auth";
 
 const cleanDevice = (v: unknown) => String(v ?? "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
 
@@ -36,9 +37,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
 
+  // Identity: required once Google sign-in is configured; anonymous before that.
+  const user = getUser(req);
+  if (authRequired() && !user) return res.status(401).json({ error: "auth" });
+
   // Durable quotas (KV) before any Deepgram spend; fails open if KV is unreachable.
   const device = cleanDevice(req.headers["x-device-id"]) || ip;
-  const quota = await checkQuota("verify", device, ip);
+  const principal = user ? `u:${user.sub}` : device;
+  const quota = await checkQuota("verify", principal, ip);
   if (quota !== "ok") return res.status(429).json({ error: quota });
 
   // Two modes: ?word= verifies a single word; ?sentence= verifies a whole sentence.
@@ -97,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? `We heard "${heard}" — try once more`
           : "We didn't catch it — try again";
 
-    await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass, device });
+    await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass, principal, sub: user?.sub, device });
 
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({ pass, heard, feedback });

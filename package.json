@@ -5,7 +5,8 @@
   "description": "SpeakCheck — English speech coach (MediaRecorder + Deepgram + Claude)",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
-    "@deepgram/sdk": "^3.9.0"
+    "@deepgram/sdk": "^3.9.0",
+    "google-auth-library": "^10.9.0"
   },
   "devDependencies": {
     "@vercel/node": "^5.1.0",
