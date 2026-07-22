@@ -93,6 +93,19 @@ A password-gated page at **`/admin`** shows live API usage, estimated cost (Deep
 
 > Capacity at this scale: a 20-student class at moderate use (~8 analyses + 6 "say it" checks per student, twice a week) costs roughly **$6/month** total. The bottleneck is ongoing cost (cents), not concurrency; Deepgram's free credit alone covers many months. Adjust the planner's assumptions to fit your class.
 
+## Cost control (4 layers)
+
+No single student can drain the budget. Quota checks run **before** any Deepgram/Claude spend, keyed to an anonymous per-browser device id (not IP — the whole class shares the school's IP). All limits are enforced durably in KV and fail open if KV is down (the in-memory limiter still applies).
+
+| Layer | Default | Env override |
+|---|---|---|
+| Per device / day | 40 analyses · 80 "say it" | `LIMIT_DEVICE_ANALYZE_DAY` · `LIMIT_DEVICE_VERIFY_DAY` |
+| Per device / minute (burst) | 8 of each | `LIMIT_DEVICE_MIN` |
+| Global / day (kill-switch) | 600 analyses · 1200 checks (worst day ≈ $3) | `LIMIT_GLOBAL_ANALYZE_DAY` · `LIMIT_GLOBAL_VERIFY_DAY` |
+| Provider hard cap | — | Set a monthly spend limit at [console.anthropic.com](https://console.anthropic.com) → Settings → **Limits**. Deepgram is prepaid credit — a natural cap. |
+
+Blocked requests return 429 (`rate-limited` / `quota`) with a friendly message in the app. The `/admin` dashboard shows today's consumption vs the caps and the **top 10 devices** by requests, so you can see exactly who is spending.
+
 ## Learning loop & PWA
 
 - **Score delta**: record the same sentence again and the score ring shows **▲/▼ vs your last try** (detected automatically by transcript similarity — no button needed).

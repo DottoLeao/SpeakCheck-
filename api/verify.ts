@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
-import { trackVerify } from "../lib/usage";
+import { trackVerify, checkQuota } from "../lib/usage";
+
+const cleanDevice = (v: unknown) => String(v ?? "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
 
 // Raw audio body — no JSON body parsing.
 export const config = { api: { bodyParser: false } };
@@ -33,6 +35,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
+
+  // Durable quotas (KV) before any Deepgram spend; fails open if KV is unreachable.
+  const device = cleanDevice(req.headers["x-device-id"]) || ip;
+  const quota = await checkQuota("verify", device, ip);
+  if (quota !== "ok") return res.status(429).json({ error: quota });
 
   // Two modes: ?word= verifies a single word; ?sentence= verifies a whole sentence.
   const target = clean(String(req.query.word ?? ""));
@@ -90,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? `We heard "${heard}" — try once more`
           : "We didn't catch it — try again";
 
-    await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass });
+    await trackVerify({ seconds: result?.metadata?.duration ?? 0, pass, device });
 
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({ pass, heard, feedback });

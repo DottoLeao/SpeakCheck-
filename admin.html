@@ -94,6 +94,21 @@
   .sec{padding:20px; margin-bottom:16px}
   .sec h2{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--navy); margin-bottom:14px}
 
+  /* today quotas */
+  .qbars{display:grid; gap:12px}
+  .qbar .lbl{display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px}
+  .qbar .lbl b{font-family:"Schibsted Grotesk"}
+  .qbar .track{height:8px; border-radius:999px; background:var(--line); overflow:hidden}
+  .qbar .fill{height:100%; border-radius:999px; background:var(--green); transition:width .5s ease}
+  .qbar .fill.warn{background:var(--warn)}
+  .qbar .fill.hot{background:var(--err)}
+  .qnote{font-size:12.5px; color:var(--muted); margin-top:10px}
+  .devs{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px}
+  .devs th{text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--line)}
+  .devs td{padding:7px 8px; border-bottom:1px dashed var(--line)}
+  .devs td.n{text-align:right; font-weight:700; font-family:"Schibsted Grotesk"}
+  .devs code{background:rgba(127,127,127,.12); padding:1px 7px; border-radius:6px; font-size:12px}
+
   /* bar chart */
   .chart{display:flex; align-items:flex-end; gap:5px; height:120px}
   .chart .col{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:3px; min-width:0}
@@ -151,6 +166,13 @@
     </div>
 
     <div class="grid" id="stats"></div>
+
+    <div class="sec glass">
+      <h2>Today — quotas &amp; who's spending</h2>
+      <div class="qbars" id="qBars"></div>
+      <div class="qnote" id="qNote"></div>
+      <div id="devWrap"></div>
+    </div>
 
     <div class="sec glass" id="chartSec">
       <h2>Activity — last 14 days</h2>
@@ -259,6 +281,27 @@ function render(d){
   $("stats").innerHTML = cards.map(x =>
     `<div class="stat glass"><div class="k">${x.k}</div><div class="v${x.cost?' cost':''}">${x.v}</div><div class="s">${x.s}</div></div>`
   ).join("");
+
+  // today: quota consumption + top devices
+  const td = d.today || { analyses:0, verifies:0, limits:{}, topDevices:[] };
+  const L = td.limits || {};
+  const qbar = (label, used, limit) => {
+    const pct = limit ? Math.min(100, Math.round(100*used/limit)) : 0;
+    const cls = pct >= 90 ? "hot" : pct >= 60 ? "warn" : "";
+    return `<div class="qbar"><div class="lbl"><span>${label}</span><b>${int(used)} / ${int(limit||0)}</b></div>
+      <div class="track"><div class="fill ${cls}" style="width:${pct}%"></div></div></div>`;
+  };
+  $("qBars").innerHTML =
+    qbar("Analyses today (global cap)", td.analyses, L.globalAnalyzeDay) +
+    qbar('"Say it" checks today (global cap)', td.verifies, L.globalVerifyDay);
+  $("qNote").textContent =
+    `Per student/day: ${L.deviceAnalyzeDay ?? "?"} analyses + ${L.deviceVerifyDay ?? "?"} checks · burst ${L.deviceBurstMin ?? "?"}/min per device. Override via LIMIT_* env vars.`;
+  const devs = td.topDevices || [];
+  $("devWrap").innerHTML = devs.length
+    ? `<table class="devs"><tr><th>Device (top 10 today)</th><th style="text-align:right">Requests</th></tr>` +
+      devs.map(x => `<tr><td><code>${String(x.id).slice(0,10)}…</code></td><td class="n">${int(x.count)}</td></tr>`).join("") +
+      `</table>`
+    : `<div class="qnote">No activity yet today.</div>`;
 
   // bar chart
   const max = Math.max(1, ...d.daily.map(x => Math.max(x.analyses, x.verifies)));

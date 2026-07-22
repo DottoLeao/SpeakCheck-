@@ -8,6 +8,19 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 
 export const usageEnabled = () => Boolean(KV_URL && KV_TOKEN);
 
+/* ---------- usage limits (env-overridable; see README "Cost control") ---------- */
+const envNum = (name: string, def: number): number => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : def;
+};
+export const LIMITS = {
+  deviceAnalyzeDay: envNum("LIMIT_DEVICE_ANALYZE_DAY", 40),
+  deviceVerifyDay: envNum("LIMIT_DEVICE_VERIFY_DAY", 80),
+  deviceBurstMin: envNum("LIMIT_DEVICE_MIN", 8),
+  globalAnalyzeDay: envNum("LIMIT_GLOBAL_ANALYZE_DAY", 600),
+  globalVerifyDay: envNum("LIMIT_GLOBAL_VERIFY_DAY", 1200),
+};
+
 /* ---------- pricing (edit here if provider rates change) ---------- */
 export const RATES = {
   deepgramPerMin: 0.0043,   // Deepgram Nova-3 pre-recorded, USD/minute
@@ -41,7 +54,47 @@ async function pipeline(cmds: Cmd[]): Promise<any[] | null> {
 
 const day = () => new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
 
+/* ---------- durable quotas (per-device + global kill-switch) ----------
+   Fixed windows: the bucket lives in the key NAME; EXPIRE is only garbage collection.
+   Fail-open on KV trouble — the in-memory limiter in each handler still applies,
+   and a Redis blip must never take the class down. */
+export type QuotaResult = "ok" | "rate-limited" | "quota";
+
+export async function checkQuota(
+  kind: "analyze" | "verify",
+  device: string,
+  _ip: string
+): Promise<QuotaResult> {
+  if (!usageEnabled()) return "ok";
+  const d = day();
+  const minute = Math.floor(Date.now() / 60_000);
+  const res = await pipeline([
+    ["INCR", `q:m:${kind}:${device}:${minute}`],
+    ["EXPIRE", `q:m:${kind}:${device}:${minute}`, 120],
+    ["INCR", `q:d:${kind}:dev:${device}:${d}`],
+    ["EXPIRE", `q:d:${kind}:dev:${device}:${d}`, 172800],
+    ["INCR", `q:d:${kind}:all:${d}`],
+    ["EXPIRE", `q:d:${kind}:all:${d}`, 172800],
+  ]);
+  if (!res) return "ok"; // KV unreachable → fail open
+
+  const burst = Number(res[0]?.result ?? 0);
+  const deviceDay = Number(res[2]?.result ?? 0);
+  const globalDay = Number(res[4]?.result ?? 0);
+  const devLimit = kind === "analyze" ? LIMITS.deviceAnalyzeDay : LIMITS.deviceVerifyDay;
+  const allLimit = kind === "analyze" ? LIMITS.globalAnalyzeDay : LIMITS.globalVerifyDay;
+
+  if (burst > LIMITS.deviceBurstMin) return "rate-limited";
+  if (deviceDay > devLimit || globalDay > allLimit) return "quota";
+  return "ok";
+}
+
 /* ---------- writers (await-able, never throw) ---------- */
+
+const deviceCmds = (d: string, device?: string): Cmd[] =>
+  device
+    ? [["ZINCRBY", `sc:day:${d}:dev`, 1, device], ["EXPIRE", `sc:day:${d}:dev`, 1296000]] // 15d
+    : [];
 
 export async function trackAnalyze(m: {
   seconds?: number;
@@ -49,6 +102,7 @@ export async function trackAnalyze(m: {
   outTok?: number;
   cacheRead?: number;
   cacheCreate?: number;
+  device?: string;
   error?: boolean;
 }): Promise<void> {
   if (m.error) {
@@ -64,16 +118,18 @@ export async function trackAnalyze(m: {
     ["INCRBY", "sc:cache_read", Math.round(m.cacheRead || 0)],
     ["INCRBY", "sc:cache_create", Math.round(m.cacheCreate || 0)],
     ["INCR", `sc:day:${d}:analyze`],
+    ...deviceCmds(d, m.device),
   ]);
 }
 
-export async function trackVerify(m: { seconds?: number; pass?: boolean }): Promise<void> {
+export async function trackVerify(m: { seconds?: number; pass?: boolean; device?: string }): Promise<void> {
   const d = day();
   await pipeline([
     ["INCR", "sc:verify:count"],
     ["INCR", m.pass ? "sc:verify:pass" : "sc:verify:fail"],
     ["INCRBYFLOAT", "sc:dg_sec", m.seconds || 0],
     ["INCR", `sc:day:${d}:verify`],
+    ...deviceCmds(d, m.device),
   ]);
 }
 
@@ -100,6 +156,12 @@ export type Stats = {
   };
   cost: { deepgram: number; claude: number; total: number; perAnalysis: number };
   daily: { date: string; analyses: number; verifies: number }[];
+  today: {
+    analyses: number;
+    verifies: number;
+    limits: typeof LIMITS;
+    topDevices: { id: string; count: number }[];
+  };
   rates: typeof RATES;
 };
 
@@ -117,21 +179,27 @@ export async function readStats(): Promise<Stats> {
     analyses: 0, analyzeErrors: 0, verifies: 0, verifyPass: 0, verifyFail: 0,
     audioSeconds: 0, inTokens: 0, outTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0,
   });
+  const emptyToday = (): Stats["today"] => ({ analyses: 0, verifies: 0, limits: LIMITS, topDevices: [] });
 
   if (!usageEnabled()) {
     return {
       configured: false, totals: empty(),
       cost: { deepgram: 0, claude: 0, total: 0, perAnalysis: 0 },
       daily: lastDays(14).map((date) => ({ date, analyses: 0, verifies: 0 })),
+      today: emptyToday(),
       rates,
     };
   }
 
   const days = lastDays(14);
+  const d0 = day();
   const res = await pipeline([
     ["MGET", "sc:analyze:count", "sc:analyze:err", "sc:verify:count", "sc:verify:pass",
       "sc:verify:fail", "sc:dg_sec", "sc:in_tok", "sc:out_tok", "sc:cache_read", "sc:cache_create"],
     ...days.map((d) => ["MGET", `sc:day:${d}:analyze`, `sc:day:${d}:verify`]),
+    ["GET", `q:d:analyze:all:${d0}`],
+    ["GET", `q:d:verify:all:${d0}`],
+    ["ZREVRANGE", `sc:day:${d0}:dev`, 0, 9, "WITHSCORES"],
   ]);
 
   if (!res) {
@@ -139,6 +207,7 @@ export async function readStats(): Promise<Stats> {
       configured: false, totals: empty(),
       cost: { deepgram: 0, claude: 0, total: 0, perAnalysis: 0 },
       daily: days.map((date) => ({ date, analyses: 0, verifies: 0 })),
+      today: emptyToday(),
       rates,
     };
   }
@@ -163,11 +232,26 @@ export async function readStats(): Promise<Stats> {
     return { date, analyses: N(r[0]), verifies: N(r[1]) };
   });
 
+  // today: quota consumption + who is spending (ZREVRANGE WITHSCORES → flat [member, score, ...])
+  const base = 1 + days.length;
+  const zflat = (res[base + 2]?.result ?? []) as any[];
+  const topDevices: { id: string; count: number }[] = [];
+  for (let i = 0; i + 1 < zflat.length; i += 2) {
+    topDevices.push({ id: String(zflat[i]), count: N(zflat[i + 1]) });
+  }
+  const today: Stats["today"] = {
+    analyses: N(res[base]?.result),
+    verifies: N(res[base + 1]?.result),
+    limits: LIMITS,
+    topDevices,
+  };
+
   return {
     configured: true,
     totals,
     cost: { deepgram, claude, total, perAnalysis: totals.analyses ? total / totals.analyses : 0 },
     daily,
+    today,
     rates,
   };
 }

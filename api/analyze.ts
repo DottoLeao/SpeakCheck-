@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
 import Anthropic from "@anthropic-ai/sdk";
-import { trackAnalyze } from "../lib/usage";
+import { trackAnalyze, checkQuota } from "../lib/usage";
+
+const cleanDevice = (v: unknown) => String(v ?? "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
 
 // We read the raw audio body ourselves — no JSON body parsing.
 export const config = { api: { bodyParser: false } };
@@ -122,6 +124,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return res.status(429).json({ error: "rate-limited" });
 
+  // Durable quotas (KV): per-device daily cap + burst + global daily kill-switch.
+  // Checked BEFORE any Deepgram/Claude spend; fails open if KV is unreachable.
+  const device = cleanDevice(req.headers["x-device-id"]) || ip;
+  const quota = await checkQuota("analyze", device, ip);
+  if (quota !== "ok") return res.status(429).json({ error: quota });
+
   // Learner settings from the client (allowlisted — anything unknown falls back to defaults).
   const accent = ACCENTS[String(req.query.accent ?? "au").toLowerCase()] ?? ACCENTS.au;
   const langQ = String(req.query.lang ?? "English");
@@ -217,6 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       outTok: u?.output_tokens ?? 0,
       cacheRead: u?.cache_read_input_tokens ?? 0,
       cacheCreate: u?.cache_creation_input_tokens ?? 0,
+      device,
     });
 
     res.setHeader("Cache-Control", "no-store");

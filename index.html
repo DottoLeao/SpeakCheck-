@@ -773,6 +773,7 @@ const ERR_MSGS = {
   'too-long':'That recording is too long — keep it under a minute',
   'network':'We need internet to analyze your speech — check your connection and try again',
   'rate-limited':'Too many recordings in a row — wait a minute and try again',
+  'quota':'Daily practice limit reached — great work today! Come back tomorrow.',
   'server-error':'Something went wrong on our side — try again in a moment',
   'aborted':null
 };
@@ -780,6 +781,19 @@ function showError(code){
   const msg = (code in ERR_MSGS) ? ERR_MSGS[code] : ERR_MSGS['server-error'];
   if(msg===null) return false;
   setLabel(msg); announce(msg); return true;
+}
+
+/* ----- anonymous device id (per-student daily quotas key off this) ----- */
+function deviceId(){
+  try{
+    let d=localStorage.getItem('sc_device');
+    if(!d){
+      d=(crypto.randomUUID && crypto.randomUUID()) ||
+        ('d-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10));
+      localStorage.setItem('sc_device', d);
+    }
+    return d;
+  }catch(_){ return 'anon'; }
 }
 
 /* ----- coach settings (accent + tips language, persisted in localStorage) ----- */
@@ -946,7 +960,7 @@ async function finishMain(){
   const timeout=setTimeout(()=>{ if(abortCtl) abortCtl.abort(); }, 25000);
   try{
     const res=await fetch('/api/analyze?accent='+encodeURIComponent(getAccent())+'&lang='+encodeURIComponent(getLang()),
-      {method:'POST', headers:{'Content-Type':recMime}, body:blob, signal:abortCtl.signal});
+      {method:'POST', headers:{'Content-Type':recMime, 'X-Device-Id':deviceId()}, body:blob, signal:abortCtl.signal});
     clearTimeout(timeout);
     if(!res.ok){
       const err=await res.json().catch(()=>({}));
@@ -1206,7 +1220,7 @@ async function sayWord(word,id,sent){
     try{
       const q = sent ? 'sentence='+encodeURIComponent(word) : 'word='+encodeURIComponent(word);
       const res=await fetch('/api/verify?'+q,
-        {method:'POST', headers:{'Content-Type':usedMime}, body:blob});
+        {method:'POST', headers:{'Content-Type':usedMime, 'X-Device-Id':deviceId()}, body:blob});
       if(!res.ok){
         const err=await res.json().catch(()=>({}));
         st.textContent=ERR_MSGS[err.error] || ERR_MSGS['server-error']; st.classList.add('bad'); return;
