@@ -879,9 +879,9 @@ function mountGoogle(attempt){
   try{
     google.accounts.id.initialize({ client_id: AUTH.googleClientId, callback: onGoogleCred, ux_mode:'popup' });
     const el=document.getElementById('gBtn');
-    const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+    // filled_blue on both themes — a solid brand-blue pill, never a jarring white button
     if(el) google.accounts.id.renderButton(el, {
-      type:'standard', theme: dark?'filled_blue':'outline', size:'large',
+      type:'standard', theme:'filled_blue', size:'large',
       shape:'pill', text:'continue_with', logo_alignment:'center', width:280
     });
     const s=document.getElementById('gBtnSkel'); if(s) s.classList.add('hide');
