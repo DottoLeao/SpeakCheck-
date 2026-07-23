@@ -81,6 +81,7 @@ Set environment variables (locally in `.env.local` / on Vercel in Project Settin
 DEEPGRAM_API_KEY=...   # console.deepgram.com — generous free tier   (required)
 ANTHROPIC_API_KEY=...  # console.anthropic.com                        (required)
 ADMIN_PASSWORD=...      # gate for the /admin dashboard               (required for /admin)
+TEACHER_PASSWORD=...    # gate for the /teacher dashboard             (optional; falls back to ADMIN_PASSWORD)
 ```
 
 > Microphone capture requires HTTPS or localhost. Deploying is `vercel --prod` (or connect the repo on vercel.com).
@@ -92,6 +93,16 @@ A password-gated page at **`/admin`** shows live API usage, estimated cost (Deep
 **Live counters** are persisted in a KV store (Vercel KV / Upstash Redis). It's optional: without it the dashboard still shows the cost model and planner, just with zeroed counters. To enable it, in your Vercel project go to **Storage → Create Database → Upstash for Redis** (free tier) and redeploy — Vercel injects `KV_REST_API_URL` / `KV_REST_API_TOKEN` automatically, and [lib/usage.ts](lib/usage.ts) picks them up with no code change.
 
 > Capacity at this scale: a 20-student class at moderate use (~8 analyses + 6 "say it" checks per student, twice a week) costs roughly **$6/month** total. The bottleneck is ongoing cost (cents), not concurrency; Deepgram's free credit alone covers many months. Adjust the planner's assumptions to fit your class.
+
+## Teacher dashboard (`/teacher`)
+
+A pedagogical (no costs, no infra) view at **`/teacher`**, gated by its own `TEACHER_PASSWORD` so the teacher never needs admin credentials. It shows:
+
+- **Class focus this week** — the words the class most struggled to pronounce, ranked. Ready-made warm-up material for the next lesson.
+- **Per-student progress** — attempts in the last 7 days, average / best score, trend (last 5 attempts vs the 5 before), last practice, and each student's recent trouble words.
+- **Print report** — the page restyles itself for printing (`@media print`), so "print to PDF" produces a clean class report for the director.
+
+Data comes from the per-student attempt log written by `/api/analyze` (signed-in students only): each analysis stores `{time, score, trouble words}` in KV (last 200 per student), and every attempt feeds a weekly class-wide wrong-word ranking. Audio is never stored.
 
 ## Google sign-in (access control)
 

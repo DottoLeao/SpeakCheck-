@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SpeakCheck — Teacher</title>
+<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+<meta name="theme-color" content="#EEF2FB" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0C1226" media="(prefers-color-scheme: dark)" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    color-scheme:light dark;
+    --navy:#3B53A4; --green:#66BC29; --green-deep:#4E9E1E; --err:#C9403A;
+    --warn:#D9A400; --ink:#182448; --muted:#5F6B87; --line:#E3E9F4;
+    --bg-base:#EEF2FB;
+    --mesh-a:rgba(59,83,164,.20); --mesh-b:rgba(102,188,41,.14); --mesh-c:rgba(59,83,164,.12);
+    --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.74);
+    --glass-border:rgba(255,255,255,.65); --blur:18px;
+    --shadow:0 1px 2px rgba(24,36,72,.04), 0 14px 34px -22px rgba(24,36,72,.22);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --navy:#8FA3E8; --green:#7CCB47; --green-deep:#9AD86E; --err:#E8746E;
+      --warn:#E2BE62; --ink:#E9EDF8; --muted:#A3AECB; --line:#2C3654;
+      --bg-base:#0C1226;
+      --mesh-a:rgba(90,116,214,.28); --mesh-b:rgba(102,188,41,.10); --mesh-c:rgba(59,83,164,.24);
+      --glass:rgba(26,33,56,.52); --glass-strong:rgba(26,33,56,.70);
+      --glass-border:rgba(255,255,255,.09);
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 14px 34px -22px rgba(0,0,0,.6);
+    }
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{overflow-x:clip}   /* body-only clip can still let mobile browsers widen the layout viewport */
+  body{
+    font-family:"Instrument Sans",system-ui,sans-serif; background:var(--bg-base); color:var(--ink);
+    line-height:1.55; min-height:100vh; font-size:15.5px; overflow-x:clip; -webkit-text-size-adjust:100%;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(620px 420px at 12% 6%,  var(--mesh-a), transparent 62%),
+      radial-gradient(720px 520px at 88% 22%, var(--mesh-b), transparent 62%),
+      radial-gradient(860px 640px at 50% 98%, var(--mesh-c), transparent 66%);
+  }
+  h1,h2,h3{font-family:"Schibsted Grotesk",system-ui,sans-serif}
+  a{color:var(--navy)}
+  .wrap{max-width:960px; margin:0 auto; padding:28px 18px 60px}
+  .glass{
+    background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:16px;
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.35); backdrop-filter:blur(var(--blur)) saturate(1.35);
+    box-shadow:var(--shadow);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+    :root{ --glass:#fff; --glass-strong:#fff; --glass-border:var(--line) }
+  }
+
+  /* ---- login ---- */
+  #login{max-width:400px; margin:12vh auto 0; padding:30px 26px; text-align:center}
+  #login .logo{width:52px; height:52px; border-radius:14px; margin:0 auto 14px; display:block}
+  #login h1{font-size:20px; letter-spacing:-.02em}
+  #login p{color:var(--muted); font-size:13.5px; margin:6px 0 18px}
+  .field{display:flex; gap:8px}
+  input[type=password]{
+    width:100%; font:inherit; padding:11px 13px; border-radius:10px; color:var(--ink);
+    background:var(--glass); border:1px solid var(--line); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  }
+  input:focus-visible{outline:2px solid var(--navy); outline-offset:1px}
+  button{
+    font:inherit; font-weight:700; cursor:pointer; border:0; border-radius:10px;
+    padding:11px 16px; background:var(--navy); color:#fff; transition:filter .15s;
+  }
+  button:hover{filter:brightness(1.06)}
+  button.ghost{background:var(--glass); color:var(--ink); border:1px solid var(--line); font-weight:600}
+  .msg{min-height:18px; font-size:13px; margin-top:10px; font-weight:600}
+  .msg.err{color:var(--err)}
+
+  /* ---- dashboard ---- */
+  #dash{display:none}
+  .top{display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:18px}
+  .top h1{font-size:22px; letter-spacing:-.02em; margin-right:auto}
+  .top .tag{font-size:12px; color:var(--muted)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:16px}
+  .stat{padding:16px}
+  .stat .k{font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+  .stat .v{font-family:"Schibsted Grotesk"; font-weight:800; font-size:26px; letter-spacing:-.02em; margin-top:4px}
+  .stat .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .sec{padding:20px; margin-bottom:16px}
+  .sec h2{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--navy); margin-bottom:6px}
+  .sec .sub{font-size:13px; color:var(--muted); margin-bottom:14px}
+
+  /* class focus chips */
+  .wchips{display:flex; flex-wrap:wrap; gap:8px}
+  .wchip{
+    display:inline-flex; align-items:baseline; gap:7px; padding:8px 13px; border-radius:999px;
+    background:var(--glass); border:1px solid var(--line); font-weight:700; font-size:15px;
+    font-family:"Schibsted Grotesk";
+  }
+  .wchip small{font-family:"Instrument Sans"; font-weight:600; font-size:11.5px; color:var(--muted)}
+  .wchip.hot{border-color:var(--err); color:var(--err)}
+  .empty{font-size:13.5px; color:var(--muted); padding:6px 0}
+
+  /* students table */
+  .tblwrap{overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:8px}
+  .devs{width:100%; min-width:640px; border-collapse:collapse; font-size:13.5px}
+  .devs th, .devs td{white-space:nowrap}
+  .devs th{text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--line)}
+  .devs td{padding:8px; border-bottom:1px dashed var(--line); vertical-align:middle}
+  .devs td.n{text-align:right; font-weight:700; font-family:"Schibsted Grotesk"}
+  .devs .mail{font-size:11.5px; color:var(--muted)}
+  .uav{width:26px; height:26px; border-radius:50%; vertical-align:-8px; margin-right:8px}
+  .uav-t{display:inline-grid; place-items:center; background:var(--navy); color:#fff; font-size:12px; font-weight:700}
+  .pill{display:inline-block; min-width:42px; text-align:center; padding:2px 9px; border-radius:999px; font-weight:800; font-family:"Schibsted Grotesk"; font-size:13px}
+  .pill.g{background:rgba(102,188,41,.16); color:var(--green-deep)}
+  .pill.w{background:rgba(217,164,0,.16); color:var(--warn)}
+  .pill.r{background:rgba(201,64,58,.14); color:var(--err)}
+  .pill.na{background:var(--glass); color:var(--muted); border:1px solid var(--line); font-weight:600}
+  .tr-up{color:var(--green-deep); font-weight:800}
+  .tr-dn{color:var(--err); font-weight:800}
+  .tr-fl{color:var(--muted)}
+  .tw{font-size:12px; color:var(--muted)}
+  .tw b{font-weight:700; color:var(--ink); background:rgba(127,127,127,.12); padding:1px 7px; border-radius:6px; font-size:12px; margin-right:4px}
+  .foot{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.6}
+
+  /* ---- print: turn the dashboard into a clean report ---- */
+  .print-head{display:none}
+  @media print{
+    :root{ --ink:#111; --muted:#555; --line:#ccc }
+    body{background:#fff; font-size:12px}
+    body::before{display:none}
+    .glass{background:#fff !important; border:1px solid #ddd !important; box-shadow:none !important;
+      -webkit-backdrop-filter:none !important; backdrop-filter:none !important}
+    .top button{display:none}
+    .top .tag{display:none}
+    .print-head{display:block; font-size:12px; color:#555; margin-bottom:14px}
+    .tblwrap{overflow:visible}
+    .devs{min-width:0}
+    .stat .v{font-size:20px}
+    .wchip{border:1px solid #ccc}
+    a{color:#111; text-decoration:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <form id="login" class="glass" onsubmit="unlock(event)">
+    <img class="logo" src="/icons/icon-192.png" alt="" />
+    <h1>SpeakCheck Teacher</h1>
+    <p>Class progress dashboard. Enter the teacher password.</p>
+    <div class="field">
+      <input type="password" id="pw" placeholder="Password" autocomplete="current-password" autofocus />
+      <button type="submit" id="unlockBtn">Open</button>
+    </div>
+    <div class="msg" id="loginMsg"></div>
+  </form>
+
+  <!-- DASHBOARD -->
+  <div id="dash">
+    <div class="top">
+      <h1>Class dashboard</h1>
+      <span class="tag" id="asOf"></span>
+      <button class="ghost" onclick="refresh()">Refresh</button>
+      <button class="ghost" onclick="window.print()">Print report</button>
+      <button class="ghost" onclick="logout()">Lock</button>
+    </div>
+    <div class="print-head" id="printHead"></div>
+
+    <div class="grid" id="stats"></div>
+
+    <div class="sec glass">
+      <h2>Class focus — <span id="wkLabel">this week</span></h2>
+      <div class="sub">The words the class struggled to pronounce this week. Great warm-up material for the next lesson.</div>
+      <div id="classWords"></div>
+    </div>
+
+    <div class="sec glass">
+      <h2>Students</h2>
+      <div class="sub">One row per signed-in student. Score is per practice attempt (0–100); trend compares the last 5 attempts with the 5 before.</div>
+      <div id="studentWrap"></div>
+      <div class="foot">Students appear here after their first practice while signed in with Google.
+        Only name, e-mail and scores are stored — audio is processed and discarded.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let PW = ""; // kept in memory only; a reload re-prompts
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+async function fetchStats(pw){
+  const r = await fetch("/api/teacher-stats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: pw }),
+  });
+  if (r.status === 401) throw new Error("Wrong password.");
+  if (r.status === 429) throw new Error("Too many tries — wait a minute.");
+  if (!r.ok) throw new Error("Server error — try again.");
+  return r.json();
+}
+
+async function unlock(e){
+  e.preventDefault();
+  const pw = $("pw").value;
+  const msg = $("loginMsg");
+  msg.textContent = "Checking…"; msg.className = "msg";
+  $("unlockBtn").disabled = true;
+  try{
+    const data = await fetchStats(pw);
+    PW = pw;
+    $("login").style.display = "none";
+    $("dash").style.display = "block";
+    render(data);
+  }catch(err){
+    msg.textContent = err.message; msg.className = "msg err";
+  }finally{
+    $("unlockBtn").disabled = false;
+  }
+}
+
+async function refresh(){
+  if (!PW) return;
+  try{ render(await fetchStats(PW)); }catch(e){ /* keep the last view */ }
+}
+
+function logout(){
+  PW = "";
+  $("dash").style.display = "none";
+  $("login").style.display = "block";
+  $("pw").value = "";
+  $("pw").focus();
+}
+
+/* compact date: dd/mm hh:mm (— when never) */
+function rel(ms){
+  if (!ms) return "—";
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth()+1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function avatar(s){
+  if (s.pic) return '<img class="uav" src="' + esc(s.pic) + '" alt="" referrerpolicy="no-referrer" />';
+  const init = esc((s.name || "?").trim().charAt(0).toUpperCase());
+  return '<span class="uav uav-t">' + init + '</span>';
+}
+
+function scorePill(v){
+  if (v == null) return '<span class="pill na">—</span>';
+  const cls = v >= 80 ? "g" : v >= 60 ? "w" : "r";
+  return '<span class="pill ' + cls + '">' + v + '</span>';
+}
+
+function trendCell(t){
+  if (t == null) return '<span class="tr-fl">—</span>';
+  if (t > 1)  return '<span class="tr-up">▲ +' + t + '</span>';
+  if (t < -1) return '<span class="tr-dn">▼ ' + t + '</span>';
+  return '<span class="tr-fl">— steady</span>';
+}
+
+function render(data){
+  const now = new Date();
+  $("asOf").textContent = "as of " + now.toLocaleString();
+  $("printHead").textContent = "SpeakCheck — class report · generated " + now.toLocaleString() +
+    " · week " + (data.week || "");
+
+  const t = data.totals || {};
+  $("stats").innerHTML = [
+    ["Students", t.students ?? 0, "signed in at least once"],
+    ["Active this week", t.activeWeek ?? 0, "practised in the last 7 days"],
+    ["Attempts (7 days)", t.attemptsWeek ?? 0, "sentences analysed"],
+    ["Class average", t.classAvg != null ? t.classAvg : "—", "mean score, recent attempts"],
+  ].map(([k, v, s]) =>
+    '<div class="stat glass"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>'
+  ).join("");
+
+  // class focus
+  $("wkLabel").textContent = data.week ? "week " + data.week.split("-W")[1] : "this week";
+  const cw = data.classWords || [];
+  $("classWords").innerHTML = cw.length
+    ? '<div class="wchips">' + cw.map((w, i) =>
+        '<span class="wchip' + (i < 3 ? " hot" : "") + '">' + esc(w.word) + '<small>×' + w.count + '</small></span>'
+      ).join("") + '</div>'
+    : '<div class="empty">No pronunciation issues logged this week yet — either the class is nailing it, or they haven\'t practised.</div>';
+
+  // students
+  const st = data.students || [];
+  $("studentWrap").innerHTML = st.length
+    ? '<div class="tblwrap"><table class="devs"><thead><tr>' +
+      '<th>Student</th><th>7 days</th><th>Avg</th><th>Best</th><th>Trend</th><th>Last practice</th><th>Trouble words</th>' +
+      '</tr></thead><tbody>' +
+      st.map((s) =>
+        '<tr><td>' + avatar(s) + esc(s.name) +
+          (s.email ? ' <span class="mail">' + esc(s.email) + '</span>' : "") + '</td>' +
+        '<td class="n">' + s.weekAttempts + '</td>' +
+        '<td>' + scorePill(s.avg) + '</td>' +
+        '<td>' + scorePill(s.best) + '</td>' +
+        '<td>' + trendCell(s.trend) + '</td>' +
+        '<td>' + rel(s.last) + '</td>' +
+        '<td class="tw">' + (s.words.length ? s.words.map((w) => "<b>" + esc(w) + "</b>").join("") : "—") + '</td></tr>'
+      ).join("") +
+      '</tbody></table></div>'
+    : '<div class="empty">No students yet. They appear after their first signed-in practice.</div>';
+}
+</script>
+</body>
+</html>

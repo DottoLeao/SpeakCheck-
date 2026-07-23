@@ -168,6 +168,38 @@ export async function trackVerify(m: {
   ]);
 }
 
+/* ---------- per-student practice history (powers /teacher) ---------- */
+
+// ISO week key like "2026-W30" — buckets the class-wide wrong-word aggregate.
+export function isoWeek(dt = new Date()): string {
+  const d = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7; // Mon=1 .. Sun=7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // shift to the week's Thursday
+  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+  const week = Math.ceil(((d.getTime() - yearStart) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+/* One analyze = one attempt. Signed-in students get a personal log (newest first,
+   capped); every attempt also feeds the class's "words to focus on" weekly ranking. */
+export async function recordAttempt(a: {
+  sub?: string;
+  score: number | null;
+  words: string[]; // pronunciation-card words, lowercased
+}): Promise<void> {
+  const cmds: Cmd[] = [];
+  const wk = isoWeek();
+  for (const w of a.words.slice(0, 12)) {
+    cmds.push(["ZINCRBY", `sc:wk:${wk}:words`, 1, w]);
+  }
+  if (a.words.length) cmds.push(["EXPIRE", `sc:wk:${wk}:words`, 3024000]); // 35d GC
+  if (a.sub && a.score != null) {
+    const entry = JSON.stringify({ t: Date.now(), s: a.score, w: a.words.slice(0, 8) });
+    cmds.push(["LPUSH", `sc:hist:${a.sub}`, entry], ["LTRIM", `sc:hist:${a.sub}`, 0, 199]);
+  }
+  if (cmds.length) await pipeline(cmds);
+}
+
 /* ---------- reader ---------- */
 
 const N = (v: any): number => {
@@ -334,5 +366,122 @@ export async function readStats(): Promise<Stats> {
     today,
     users,
     rates,
+  };
+}
+
+/* ---------- teacher reader (pedagogical view — no costs, no infra) ---------- */
+
+export type TeacherStudent = {
+  sub: string;
+  name: string;
+  email: string;
+  pic: string;
+  attempts: number;       // attempts in the log window (last 50)
+  weekAttempts: number;   // attempts in the last 7 days
+  avg: number | null;     // mean score, last 20 attempts
+  best: number | null;
+  trend: number | null;   // avg(last 5) − avg(previous 5); needs ≥6 attempts
+  last: number;           // ms timestamp of most recent attempt (0 = never)
+  words: string[];        // this student's recent trouble words (deduped)
+};
+
+export type TeacherStats = {
+  configured: boolean;
+  week: string;
+  totals: { students: number; activeWeek: number; attemptsWeek: number; classAvg: number | null };
+  classWords: { word: string; count: number }[];
+  students: TeacherStudent[];
+};
+
+export async function readTeacherStats(): Promise<TeacherStats> {
+  const wk = isoWeek();
+  const emptyStats: TeacherStats = {
+    configured: false,
+    week: wk,
+    totals: { students: 0, activeWeek: 0, attemptsWeek: 0, classAvg: null },
+    classWords: [],
+    students: [],
+  };
+  if (!usageEnabled()) return emptyStats;
+
+  const head = await pipeline([
+    ["SMEMBERS", "sc:users"],
+    ["ZREVRANGE", `sc:wk:${wk}:words`, 0, 14, "WITHSCORES"],
+  ]);
+  if (!head) return emptyStats;
+
+  const subs = ((head[0]?.result ?? []) as any[]).map(String).slice(0, 100);
+  const wflat = (head[1]?.result ?? []) as any[];
+  const classWords: { word: string; count: number }[] = [];
+  for (let i = 0; i + 1 < wflat.length; i += 2) {
+    classWords.push({ word: String(wflat[i]), count: N(wflat[i + 1]) });
+  }
+
+  const students: TeacherStudent[] = [];
+  if (subs.length) {
+    const rows = await pipeline(
+      subs.flatMap((s) => [
+        ["HGETALL", `sc:user:${s}`],
+        ["LRANGE", `sc:hist:${s}`, 0, 49],
+      ])
+    );
+    const weekAgo = Date.now() - 7 * 86400000;
+    subs.forEach((sub, i) => {
+      const flat = (rows?.[i * 2]?.result ?? []) as any[];
+      const h: Record<string, string> = {};
+      for (let j = 0; j + 1 < flat.length; j += 2) h[String(flat[j])] = String(flat[j + 1]);
+
+      const raw = (rows?.[i * 2 + 1]?.result ?? []) as any[];
+      const log: { t: number; s: number; w: string[] }[] = [];
+      for (const item of raw) {
+        try {
+          const e = JSON.parse(String(item));
+          if (Number.isFinite(e?.t) && Number.isFinite(e?.s)) {
+            log.push({ t: e.t, s: e.s, w: Array.isArray(e.w) ? e.w.map(String) : [] });
+          }
+        } catch { /* skip malformed entries */ }
+      }
+
+      const mean = (xs: number[]) =>
+        xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+      const scores = log.map((e) => e.s);
+      const avg = mean(scores.slice(0, 20));
+      const last5 = mean(scores.slice(0, 5));
+      const prev5 = mean(scores.slice(5, 10));
+      const words: string[] = [];
+      for (const e of log) {
+        for (const w of e.w) if (!words.includes(w)) words.push(w);
+        if (words.length >= 6) break;
+      }
+
+      students.push({
+        sub,
+        name: h.name || "Unknown",
+        email: h.email || "",
+        pic: h.pic || "",
+        attempts: log.length,
+        weekAttempts: log.filter((e) => e.t >= weekAgo).length,
+        avg: avg != null ? Math.round(avg) : null,
+        best: scores.length ? Math.max(...scores) : null,
+        trend: scores.length >= 6 && last5 != null && prev5 != null ? Math.round(last5 - prev5) : null,
+        last: log[0]?.t ?? N(h.lastSeen),
+        words: words.slice(0, 6),
+      });
+    });
+  }
+  students.sort((a, b) => b.last - a.last);
+
+  const avgs = students.map((s) => s.avg).filter((v): v is number => v != null);
+  return {
+    configured: true,
+    week: wk,
+    totals: {
+      students: students.length,
+      activeWeek: students.filter((s) => s.weekAttempts > 0).length,
+      attemptsWeek: students.reduce((n, s) => n + s.weekAttempts, 0),
+      classAvg: avgs.length ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null,
+    },
+    classWords,
+    students,
   };
 }

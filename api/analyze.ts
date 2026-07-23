@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@deepgram/sdk";
 import Anthropic from "@anthropic-ai/sdk";
-import { trackAnalyze, checkQuota } from "../lib/usage";
+import { trackAnalyze, checkQuota, recordAttempt } from "../lib/usage";
 import { authRequired, getUser } from "../lib/auth";
 
 const cleanDevice = (v: unknown) => String(v ?? "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
@@ -224,18 +224,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Record usage for the /admin dashboard (no-op if KV isn't configured; never blocks the result).
+    // Session score, server-side — same formula the client displays (mean ASR
+    // confidence minus a small penalty per grammar/vocab card). Logged per student
+    // so /teacher can show progress over time.
+    const avgConf = dgWords.reduce((s, w) => s + (w.confidence || 0), 0) / dgWords.length;
+    const cards: any[] = Array.isArray(analysis.cards) ? analysis.cards : [];
+    const nonPron = cards.filter((c) => c.type !== "pronunciation").length;
+    const score = Math.max(5, Math.min(100, Math.round(avgConf * 100 - nonPron * 4)));
+    const troubleWords = cards
+      .filter((c) => c.type === "pronunciation" && c.word)
+      .map((c) => String(c.word).toLowerCase());
+
+    // Record usage for the /admin dashboard and the attempt for /teacher
+    // (no-ops if KV isn't configured; never block the result).
     const u = msg.usage as any;
-    await trackAnalyze({
-      seconds: result?.metadata?.duration ?? 0,
-      inTok: u?.input_tokens ?? 0,
-      outTok: u?.output_tokens ?? 0,
-      cacheRead: u?.cache_read_input_tokens ?? 0,
-      cacheCreate: u?.cache_creation_input_tokens ?? 0,
-      principal,
-      sub: user?.sub,
-      device,
-    });
+    await Promise.all([
+      trackAnalyze({
+        seconds: result?.metadata?.duration ?? 0,
+        inTok: u?.input_tokens ?? 0,
+        outTok: u?.output_tokens ?? 0,
+        cacheRead: u?.cache_read_input_tokens ?? 0,
+        cacheCreate: u?.cache_creation_input_tokens ?? 0,
+        principal,
+        sub: user?.sub,
+        device,
+      }),
+      recordAttempt({ sub: user?.sub, score, words: troubleWords }),
+    ]);
 
     res.setHeader("Cache-Control", "no-store");
     // Attach the raw recognizer words (confidence + timings) alongside the LLM analysis.
