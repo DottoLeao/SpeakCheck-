@@ -125,10 +125,24 @@
   .user-chip button:hover{color:var(--ink)}
 
   /* sign-in gate (shown when Google login is configured and there is no session) */
-  .gate{display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:16px 8px 20px}
-  .gate .lucide{width:30px; height:30px; color:var(--navy); margin-bottom:4px}
-  .gate h3{font-size:18px; letter-spacing:-.01em; color:var(--ink)}
-  .gate p{font-size:13.5px; color:var(--muted); max-width:40ch; margin-bottom:12px}
+  .gate{
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    gap:10px; padding:26px 18px 22px; max-width:380px; margin:0 auto;
+    animation:gateIn .5s cubic-bezier(.22,1,.36,1);
+  }
+  .gate-badge{width:62px; height:62px; margin-bottom:2px; filter:drop-shadow(0 10px 20px rgba(44,63,130,.42))}
+  .gate-badge img{width:100%; height:100%; display:block}
+  .gate h3{font-size:21px; letter-spacing:-.02em; color:var(--ink)}
+  .gate p{font-size:14px; color:var(--muted); max-width:32ch; line-height:1.55; margin-bottom:6px}
+  .gate-btn{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:46px}
+  #gBtn{display:flex; justify-content:center; min-height:44px}
+  .gate-skeleton{display:flex; align-items:center; gap:9px; color:var(--muted); font-size:13px; font-weight:600}
+  .gate-skeleton .sp{width:16px; height:16px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--navy); animation:spin .7s linear infinite}
+  .gate-error{font-size:13px; color:var(--err); max-width:34ch; line-height:1.5}
+  .gate-trust{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-top:6px}
+  .gate-trust .lucide{width:14px; height:14px; color:var(--green-deep)}
+  @keyframes gateIn{from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
   #micCard.gated .mic-zone, #micCard.gated .hint, #micCard.gated .coach-set{display:none}
 
   /* ---------- Page header ---------- */
@@ -484,7 +498,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .mic-btn.rec .ring, .bars.on span, .loader-eq.on span,
-    .loader-fill::after, .skel .sk-line::after{animation:none}
+    .loader-fill::after, .skel .sk-line::after, .gate, .gate-skeleton .sp{animation:none}
     .loader-fill{transition:none}
     .score-ring circle.val{transition:none}
   }
@@ -534,10 +548,15 @@
 <main class="wrap">
   <section class="card" id="micCard">
     <div class="gate hide" id="gate">
-      <i data-lucide="lock" aria-hidden="true"></i>
-      <h3>Sign in to start practising</h3>
-      <p>Use your Google account — it keeps the class organised and your practice fair.</p>
-      <div id="gBtn"></div>
+      <div class="gate-badge"><img src="/icons/icon-192.png" alt="" width="62" height="62" /></div>
+      <h3>Welcome to SpeakCheck</h3>
+      <p>Sign in with Google to start practising — it keeps your class organised and your daily practice fair.</p>
+      <div class="gate-btn">
+        <div id="gBtn"></div>
+        <div class="gate-skeleton" id="gBtnSkel"><span class="sp"></span>Loading sign-in…</div>
+        <div class="gate-error hide" id="gBtnErr">Couldn't load Google sign-in — check your connection or ad blocker, then reload.</div>
+      </div>
+      <div class="gate-trust"><i data-lucide="shield-check" aria-hidden="true"></i>We only see your name, email and photo.</div>
     </div>
     <div class="mic-zone">
       <button class="mic-btn" id="mic" onclick="toggleRec()" aria-label="Start recording" aria-pressed="false">
@@ -850,13 +869,22 @@ function updateAuthUI(){
 }
 function mountGoogle(attempt){
   if(!(window.google && google.accounts && google.accounts.id)){
-    if((attempt||0)<40) setTimeout(()=>mountGoogle((attempt||0)+1), 300);   // GIS script still loading
+    if((attempt||0)<40){ setTimeout(()=>mountGoogle((attempt||0)+1), 300); }   // GIS script still loading
+    else{                                                                       // gave up → show a clear error
+      const s=document.getElementById('gBtnSkel'), e=document.getElementById('gBtnErr');
+      if(s) s.classList.add('hide'); if(e) e.classList.remove('hide');
+    }
     return;
   }
   try{
     google.accounts.id.initialize({ client_id: AUTH.googleClientId, callback: onGoogleCred, ux_mode:'popup' });
     const el=document.getElementById('gBtn');
-    if(el) google.accounts.id.renderButton(el, { theme:'outline', size:'large', shape:'pill', text:'signin_with' });
+    const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+    if(el) google.accounts.id.renderButton(el, {
+      type:'standard', theme: dark?'filled_blue':'outline', size:'large',
+      shape:'pill', text:'continue_with', logo_alignment:'center', width:280
+    });
+    const s=document.getElementById('gBtnSkel'); if(s) s.classList.add('hide');
   }catch(_){}
 }
 async function onGoogleCred(resp){
