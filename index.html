@@ -136,6 +136,10 @@
   .gate p{font-size:14px; color:var(--muted); max-width:32ch; line-height:1.55; margin-bottom:6px}
   .gate-btn{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:46px}
   #gBtn{display:flex; justify-content:center; min-height:44px}
+  /* Chromium paints an opaque WHITE backdrop behind cross-origin iframes whose
+     internal color-scheme (light, Google's button) differs from the embedder's
+     (dark). Matching schemes on the container restores transparency. */
+  #gBtn, #gBtn iframe{color-scheme:light}
   .gate-skeleton{display:flex; align-items:center; gap:9px; color:var(--muted); font-size:13px; font-weight:600}
   .gate-skeleton .sp{width:16px; height:16px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--navy); animation:spin .7s linear infinite}
   .gate-error{font-size:13px; color:var(--err); max-width:34ch; line-height:1.5}
