@@ -301,10 +301,13 @@ export async function readStats(): Promise<Stats> {
     top: [],
   };
   if (topDevices.length) {
+    // Ranking ids carry the quota principal ("u:{sub}" for signed-in users);
+    // profile keys are stored under the bare sub — strip the prefix to join.
+    const subOf = (id: string) => (id.startsWith("u:") ? id.slice(2) : id);
     const prof = await pipeline(
       topDevices.flatMap((t) => [
-        ["HGETALL", `sc:user:${t.id}`],
-        ["SCARD", `sc:user:${t.id}:devices`],
+        ["HGETALL", `sc:user:${subOf(t.id)}`],
+        ["SCARD", `sc:user:${subOf(t.id)}:devices`],
       ])
     );
     users.top = topDevices.map((t, i) => {

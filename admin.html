@@ -103,7 +103,9 @@
   .qbar .fill.warn{background:var(--warn)}
   .qbar .fill.hot{background:var(--err)}
   .qnote{font-size:12.5px; color:var(--muted); margin-top:10px}
-  .devs{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px}
+  .tblwrap{overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:14px}
+  .devs{width:100%; min-width:540px; border-collapse:collapse; font-size:13.5px}
+  .devs th, .devs td{white-space:nowrap}
   .devs th{text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--line)}
   .devs td{padding:7px 8px; border-bottom:1px dashed var(--line)}
   .devs td.n{text-align:right; font-weight:700; font-family:"Schibsted Grotesk"}
@@ -298,16 +300,17 @@ function render(d){
     { k:"Devices", v:int(us.devices), s:"distinct browsers seen" },
   ].map(x => `<div class="stat glass"><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="s">${x.s}</div></div>`).join("");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const rel = (ms) => ms ? new Date(ms).toLocaleString() : "—";
+  const rel = (ms) => ms ? new Date(ms).toLocaleDateString([], {day:"2-digit", month:"2-digit"}) + " " +
+    new Date(ms).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "—";
   $("userWrap").innerHTML = (us.top && us.top.length)
-    ? `<table class="devs"><tr><th>Top today</th><th>Email</th><th style="text-align:right">Requests</th><th style="text-align:right">Devices</th><th>Last seen</th></tr>` +
+    ? `<div class="tblwrap"><table class="devs"><tr><th>Top today</th><th>Email</th><th style="text-align:right">Requests</th><th style="text-align:right">Devices</th><th>Last seen</th></tr>` +
       us.top.map(u => {
         const av = u.pic
           ? `<img class="uav" src="${esc(u.pic)}" alt="" referrerpolicy="no-referrer">`
           : `<span class="uav uav-t">${esc((u.name||"?")[0].toUpperCase())}</span>`;
         return `<tr><td>${av}${esc(u.name)}</td><td>${esc(u.email)||"<i>—</i>"}</td>` +
           `<td class="n">${int(u.count)}</td><td class="n">${u.email?int(u.devices):"—"}</td><td>${rel(u.lastSeen)}</td></tr>`;
-      }).join("") + `</table>`
+      }).join("") + `</table></div>`
     : `<div class="qnote">No sign-ins yet — Google login not configured, or nobody has logged in today.</div>`;
 
   // today: quota consumption + top devices
@@ -325,10 +328,15 @@ function render(d){
   $("qNote").textContent =
     `Per student/day: ${L.deviceAnalyzeDay ?? "?"} analyses + ${L.deviceVerifyDay ?? "?"} checks · burst ${L.deviceBurstMin ?? "?"}/min per device. Override via LIMIT_* env vars.`;
   const devs = td.topDevices || [];
+  // resolve principals to real names via the users block (same ids)
+  const nameOf = {};
+  (us.top || []).forEach(u => { if (u.email) nameOf[u.id] = u.name; });
   $("devWrap").innerHTML = devs.length
-    ? `<table class="devs"><tr><th>Device (top 10 today)</th><th style="text-align:right">Requests</th></tr>` +
-      devs.map(x => `<tr><td><code>${String(x.id).slice(0,10)}…</code></td><td class="n">${int(x.count)}</td></tr>`).join("") +
-      `</table>`
+    ? `<div class="tblwrap"><table class="devs"><tr><th>Who (top 10 today)</th><th style="text-align:right">Requests</th></tr>` +
+      devs.map(x => {
+        const label = nameOf[x.id] ? esc(nameOf[x.id]) : `<code>${esc(String(x.id).slice(0,10))}…</code>`;
+        return `<tr><td>${label}</td><td class="n">${int(x.count)}</td></tr>`;
+      }).join("") + `</table></div>`
     : `<div class="qnote">No activity yet today.</div>`;
 
   // bar chart
