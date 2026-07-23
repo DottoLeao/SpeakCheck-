@@ -33,6 +33,7 @@
     }
   }
   *{box-sizing:border-box; margin:0; padding:0}
+  html{overflow-x:clip}   /* body-only clip can still let mobile browsers widen the layout viewport */
   body{
     font-family:"Instrument Sans",system-ui,sans-serif; background:var(--bg-base); color:var(--ink);
     line-height:1.55; min-height:100vh; font-size:15.5px; overflow-x:clip; -webkit-text-size-adjust:100%;
